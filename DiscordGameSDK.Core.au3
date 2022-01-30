@@ -1,31 +1,45 @@
 #include-once
 #include "DiscordGameSDK.au3"
 
-; return
-; true good
-; false bad
-; error
-; -1 id isn't int64
-; -2 invalid flag
-; -3 init'd
-; -4 failed to open dll
-; -5 failed to call dll, @ext dllcall error
-; -6 discord error, @ext discord result
-Func _Discord_Init($iDiscordId, $iFlags = $DISCORD_CREATEFLAGS_NOREQUIREDISCORD)
+; #FUNCTION# ====================================================================================================================
+; Name...........: _Discord_Init
+; Description ...: Inits the Discord SDK, events and functions
+; Syntax.........: _Discord_Init($iDiscordId [, $iFlags = $DISCORD_CREATEFLAGS_DEFAULT [, $sDllFolderPath = @ScriptDir]])
+; Parameters ....: $iDiscordId     - [Int64]                  Your application's client id
+;                  $iFlags         - [CREATEFLAGS] [Optional] Whether to connect to local discord client or make a standalone connection
+;                  $sDllFolderPath - [String]      [Optional] Full path to the "folder" of your dll, can contain trailing slash
+; Return values .: Success - True
+;                  Failure - False and sets @error
+;                          | 1 - Id is not Int64
+;                          | 2 - Invalid flag
+;                          | 3 - Already initialized
+;                          | 4 - Failed to open dll
+;                          | 5 - Failed to call dll with @extended = DllCall error
+;                          | 6 - Discord error with @extended = Discord result
+; Author ........: Alan72104#4011
+; Modified.......: 
+; Remarks .......: Remember to pass "Your application's client id" not your user id, or will result in undefined behavior or crash
+;                  All SDK enum names share a template of $DISCORD_{TYPE}_{VALUE} e.g. $DISCORD_LOGLEVEL_INFO
+;                  Enum types in function parameter lists are shown in ALLCAP     e.g. LOGLEVEL
+;                  AbcHandler in function parameter lists are callback functions  e.g. LogHookCallbackHandler
+; Related .......: $DISCORD_CREATEFLAGS...
+; Link ..........: https://discord.com/developers/docs/game-sdk/discord#create
+; ===============================================================================================================================
+Func _Discord_Init($iDiscordId, $iFlags = $DISCORD_CREATEFLAGS_DEFAULT, $sDllFolderPath = @ScriptDir)
     If VarGetType($iDiscordId) <> "Int64" Then
-        Return SetError(-1, 0, False)
+        Return SetError(1, 0, False)
     EndIf
     If VarGetType($iFlags) <> "Int32" Or $iFlags < $DISCORD_CREATEFLAGS_DEFAULT Or $iFlags > $DISCORD_CREATEFLAGS_NOREQUIREDISCORD Then
-        Return SetError(-2, 0, False)
+        Return SetError(2, 0, False)
     EndIf
     If $__Discord_hDll Then
-        Return SetError(-3, 0, False)
+        Return SetError(3, 0, False)
     EndIf
 
     Local $tParams = DllStructCreate($__DISCORD_tagFFICREATEPARAMS)
     DllStructSetData($tParams, "ClientId", $iDiscordId)
     DllStructSetData($tParams, "Flags", $iFlags)
-    ; Reference to core instance that will be sent back on callback for C implementation, OOP isn't used there
+    ; Reference to core instance obj that will be sent back on static callback to dispatch to instance objects, OOP isn't used there
     DllStructSetData($tParams, "Events", Null)
     $__Discord_atEventInterfaces[$__DISCORD_CORE] = DllStructCreate($__DISCORD_tagCOREEVENTS)
     DllStructSetData($tParams, "EventData", DllStructGetPtr($__Discord_atEventInterfaces[$__DISCORD_CORE]))
@@ -67,48 +81,71 @@ Func _Discord_Init($iDiscordId, $iFlags = $DISCORD_CREATEFLAGS_NOREQUIREDISCORD)
     DllStructSetData($tParams, "AchievementVersion", 1)
 
     Local $hDll = -1
-    If @AutoItX64 Then
-        $hDll = DllOpen(@ScriptDir & "\discord_game_sdk64.dll")
+    If StringRight($sDllFolderPath, 1) = "\" Or StringRight($sDllFolderPath, 1) = "/" Then
     Else
-        $hDll = DllOpen(@Scriptdir & "\discord_game_sdk32.dll")
+        $sDllFolderPath &= "\"
+    EndIf
+    If @AutoItX64 Then
+        $hDll = DllOpen($sDllFolderPath & "discord_game_sdk64.dll")
+    Else
+        $hDll = DllOpen($sDllFolderPath & "discord_game_sdk32.dll")
     EndIf
     If $hDll = -1 Then
-        Return SetError(-4, 0, False)
+        Return SetError(4, 0, False)
     EndIf
     $__Discord_hDll = $hDll
 
+    OnAutoItExitRegister("__Discord_Dispose")
     __Discord_InitEvents()
 
     ; Result DiscordCreate(UInt32 version, ref FFICreateParams createParams, out IntPtr manager);
     Local $aResult = DllCall($__Discord_hDll, "int:cdecl", "DiscordCreate", "uint", 2, "ptr", DllStructGetPtr($tParams), "ptr*", Null)
     $__Discord_apMethodPtrs[$__DISCORD_CORE] = $aResult[3]
-
+    
     If @error Then
-        Return SetError(-5, @error, False)
+        Return SetError(5, @error, False)
     EndIf
 
-    If $aResult[0] <> $DISCORD_OK Then
+    If $aResult[0] <> $DISCORD_RESULT_OK Then
         __Discord_Dispose()
-        Return SetError(-6, $aResult[0], False)
+        Return SetError(6, $aResult[0], False)
     EndIf
 
-    ; Retrieve the method address table for this core instance
+    ; Retrieve the method ptr table for this core instance
     $__Discord_atMethodInterfaces[$__DISCORD_CORE] = DllStructCreate($__DISCORD_tagCOREMETHODS, $__Discord_apMethodPtrs[$__DISCORD_CORE])
 
-    __Discord_ApplicationManager_Init()
-    __Discord_UserManager_Init()
+    __Discord_AchievementManager_Init()
     __Discord_ActivityManager_Init()
-
-    OnAutoItExitRegister("__Discord_Dispose")
+    __Discord_ApplicationManager_Init()
+    __Discord_ImageManager_Init()
+    __Discord_LobbyManager_Init()
+    __Discord_NetworkManager_Init()
+    __Discord_OverlayManager_Init()
+    __Discord_RelationshipManager_Init()
+    __Discord_StorageManager_Init()
+    __Discord_StoreManager_Init()
+    __Discord_UserManager_Init()
+    __Discord_VoiceManager_Init()
     Return True
 EndFunc
 
-; $fnHandler: void LogHookCallbackHandler(LogLevel level, string message)
-; return
-; true good
-; false bad
+; #FUNCTION# ====================================================================================================================
+; Name...........: _Discord_SetLogHook
+; Description ...: Registers a logging callback function with the minimum level of message to receive
+; Syntax.........: _Discord_SetLogHook($iLogLevel, $fnHandler)
+; Parameters ....: $iLogLevel - [LOGLEVEL]               The minimum level of event to log
+;                  $fnHandler - [LogHookCallbackHandler] The callback function to catch the messages
+;                             + void LogHookCallbackHandler(LOGLEVEL level, String message)
+; Return values .: Success            - True
+;                  Invalid parameters - False
+; Author ........: Alan72104#4011
+; Modified.......: 
+; Remarks .......: 
+; Related .......: $DISCORD_LOGLEVEL...
+; Link ..........: https://discord.com/developers/docs/game-sdk/discord#setloghook
+; ===============================================================================================================================
 Func _Discord_SetLogHook($iLogLevel, $fnHandler)
-    If VarGetType($iLogLevel) <> "Int32" Or $iLogLevel < $DISCORD_LOGLEVEL_ERROR Or $iLogLevel > $DISCORD_LOGLEVEL_DEBUG Then
+    If VarGetType($iLogLevel) <> "Int32" Or $iLogLevel < $DISCORD_LOGLEVEL_ERROR Or $iLogLevel > $DISCORD_LOGLEVEL_DEBUG Or VarGetType($fnHandler) <> "UserFunction" Then
         Return False
     EndIf
     If $__Discord_hLogHookCallback = 0 Then
@@ -124,9 +161,20 @@ Func _Discord_SetLogHook($iLogLevel, $fnHandler)
     Return True
 EndFunc
 
-; return
-; string
-Func _Discord_GetErrorString($iError)
+; #FUNCTION# ====================================================================================================================
+; Name...........: _Discord_GetResultString
+; Description ...: Gets the name of a discord result code
+; Syntax.........: _Discord_GetResultString($iError)
+; Parameters ....: $iError - [RESULT] Discord result code
+; Return values .: Success - Result string
+;                  Failure - "Invalid result code"
+; Author ........: Alan72104#4011
+; Modified.......: 
+; Remarks .......: Enum number to name
+; Related .......: $DISCORD_RESULT...
+; Link ..........: https://discord.com/developers/docs/game-sdk/discord#data-models
+; ===============================================================================================================================
+Func _Discord_GetResultString($iError)
     Switch $iError
         Case 0
             Return "Ok"
@@ -217,23 +265,29 @@ Func _Discord_GetErrorString($iError)
         Case 43
             Return "TransactionAborted"
         Case Else
-            Return "Invalid error code"
+            Return "Invalid result code"
     EndSwitch
 EndFunc
 
-; return
-; true good
-; false bad
-; error
-; discord result
+; #FUNCTION# ====================================================================================================================
+; Name...........: _Discord_RunCallbacks
+; Description ...: Runs all pending SDK callbacks
+; Syntax.........: _Discord_RunCallbacks()
+; Parameters ....: None
+; Return values .: Discord result
+; Author ........: Alan72104#4011
+; Modified.......: 
+; Remarks .......: Put this in your game's main event loop, like Update()
+;                  This function also serves as a way to know that the local Discord client is still connected
+;                  If the user closes Discord while playing your game, RunCallbacks() will return $DISCORD_RESULT_NOTRUNNING
+; Related .......: $DISCORD_RESULT...
+; Link ..........: https://discord.com/developers/docs/game-sdk/discord#runcallbacks
+; ===============================================================================================================================
 Func _Discord_RunCallbacks()
     Local $aResult = DllCallAddress("int:cdecl", _
                                     DllStructGetData($__Discord_atMethodInterfaces[$__DISCORD_CORE], "RunCallbacks"), _
                                     "ptr", $__Discord_apMethodPtrs[$__DISCORD_CORE])
-    If $aResult[0] <> $DISCORD_OK Then
-        Return SetError($aResult[0], 0, False)
-    EndIf
-    Return True
+    Return $aResult[0]
 EndFunc
 
 Func __Discord_InitEvents()
@@ -249,14 +303,28 @@ EndFunc
 
 Func __Discord_Dispose()
     OnAutoItExitUnRegister("__Discord_Dispose")
-
-    __Discord_ApplicationManager_Dispose()
-    __Discord_UserManager_Dispose()
+    __Discord_AchievementManager_Dispose()
     __Discord_ActivityManager_Dispose()
+    __Discord_ApplicationManager_Dispose()
+    __Discord_ImageManager_Dispose()
+    __Discord_LobbyManager_Dispose()
+    __Discord_NetworkManager_Dispose()
+    __Discord_OverlayManager_Dispose()
+    __Discord_RelationshipManager_Dispose()
+    __Discord_StorageManager_Dispose()
+    __Discord_StoreManager_Dispose()
+    __Discord_UserManager_Dispose()
+    __Discord_VoiceManager_Dispose()
+    Local $timer = TimerInit()
+    While TimerDiff($timer) < 250
+        _Discord_RunCallbacks()
+    WEnd
     If $__Discord_apMethodPtrs[$__DISCORD_CORE] Then
+        ; ConsoleWrite("Disposing Discord" & @CRLF)
         DllCallAddress("none:cdecl", _
                        DllStructGetData($__Discord_atMethodInterfaces[$__DISCORD_CORE], "Destroy"), _
                        "ptr", $__Discord_apMethodPtrs[$__DISCORD_CORE])
+        ; ConsoleWrite("Disposing Completed" & @CRLF)
         $__Discord_apMethodPtrs[$__DISCORD_CORE] = 0
     EndIf
     If $__Discord_hLogHookCallback Then

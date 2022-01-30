@@ -1,56 +1,55 @@
 #include-once
-
-; Discord result code
-Global Enum $DISCORD_OK = 0, _
-            $DISCORD_ERROR_SERVICEUNAVAILABLE = 1, _
-            $DISCORD_ERROR_INVALIDVERSION = 2, _
-            $DISCORD_ERROR_LOCKFAILED = 3, _
-            $DISCORD_ERROR_INTERNALERROR = 4, _
-            $DISCORD_ERROR_INVALIDPAYLOAD = 5, _
-            $DISCORD_ERROR_INVALIDCOMMAND = 6, _
-            $DISCORD_ERROR_INVALIDPERMISSIONS = 7, _
-            $DISCORD_ERROR_NOTFETCHED = 8, _
-            $DISCORD_ERROR_NOTFOUND = 9, _
-            $DISCORD_ERROR_CONFLICT = 10, _
-            $DISCORD_ERROR_INVALIDSECRET = 11, _
-            $DISCORD_ERROR_INVALIDJOINSECRET = 12, _
-            $DISCORD_ERROR_NOELIGIBLEACTIVITY = 13, _
-            $DISCORD_ERROR_INVALIDINVITE = 14, _
-            $DISCORD_ERROR_NOTAUTHENTICATED = 15, _
-            $DISCORD_ERROR_INVALIDACCESSTOKEN = 16, _
-            $DISCORD_ERROR_APPLICATIONMISMATCH = 17, _
-            $DISCORD_ERROR_INVALIDDATAURL = 18, _
-            $DISCORD_ERROR_INVALIDBASE64 = 19, _
-            $DISCORD_ERROR_NOTFILTERED = 20, _
-            $DISCORD_ERROR_LOBBYFULL = 21, _
-            $DISCORD_ERROR_INVALIDLOBBYSECRET = 22, _
-            $DISCORD_ERROR_INVALIDFILENAME = 23, _
-            $DISCORD_ERROR_INVALIDFILESIZE = 24, _
-            $DISCORD_ERROR_INVALIDENTITLEMENT = 25, _
-            $DISCORD_ERROR_NOTINSTALLED = 26, _
-            $DISCORD_ERROR_NOTRUNNING = 27, _
-            $DISCORD_ERROR_INSUFFICIENTBUFFER = 28, _
-            $DISCORD_ERROR_PURCHASECANCELED = 29, _
-            $DISCORD_ERROR_INVALIDGUILD = 30, _
-            $DISCORD_ERROR_INVALIDEVENT = 31, _
-            $DISCORD_ERROR_INVALIDCHANNEL = 32, _
-            $DISCORD_ERROR_INVALIDORIGIN = 33, _
-            $DISCORD_ERROR_RATELIMITED = 34, _
-            $DISCORD_ERROR_OAUTH2ERROR = 35, _
-            $DISCORD_ERROR_SELECTCHANNELTIMEOUT = 36, _
-            $DISCORD_ERROR_GETGUILDTIMEOUT = 37, _
-            $DISCORD_ERROR_SELECTVOICEFORCEREQUIRED = 38, _
-            $DISCORD_ERROR_CAPTURESHORTCUTALREADYLISTENING = 39, _
-            $DISCORD_ERROR_UNAUTHORIZEDFORACHIEVEMENT = 40, _
-            $DISCORD_ERROR_INVALIDGIFTCODE = 41, _
-            $DISCORD_ERROR_PURCHASEERROR = 42, _
-            $DISCORD_ERROR_TRANSACTIONABORTED = 43
-Global Enum $DISCORD_CREATEFLAGS_DEFAULT = 0, _
-            $DISCORD_CREATEFLAGS_NOREQUIREDISCORD
-Global Enum $DISCORD_LOGLEVEL_ERROR = 0, _
+; #CONSTANTS# ===================================================================================================================
+Global Enum $DISCORD_RESULT_OK = 0, _
+            $DISCORD_RESULT_SERVICEUNAVAILABLE = 1, _
+            $DISCORD_RESULT_INVALIDVERSION = 2, _
+            $DISCORD_RESULT_LOCKFAILED = 3, _
+            $DISCORD_RESULT_INTERNALERROR = 4, _
+            $DISCORD_RESULT_INVALIDPAYLOAD = 5, _
+            $DISCORD_RESULT_INVALIDCOMMAND = 6, _
+            $DISCORD_RESULT_INVALIDPERMISSIONS = 7, _
+            $DISCORD_RESULT_NOTFETCHED = 8, _
+            $DISCORD_RESULT_NOTFOUND = 9, _
+            $DISCORD_RESULT_CONFLICT = 10, _
+            $DISCORD_RESULT_INVALIDSECRET = 11, _
+            $DISCORD_RESULT_INVALIDJOINSECRET = 12, _
+            $DISCORD_RESULT_NOELIGIBLEACTIVITY = 13, _
+            $DISCORD_RESULT_INVALIDINVITE = 14, _
+            $DISCORD_RESULT_NOTAUTHENTICATED = 15, _
+            $DISCORD_RESULT_INVALIDACCESSTOKEN = 16, _
+            $DISCORD_RESULT_APPLICATIONMISMATCH = 17, _
+            $DISCORD_RESULT_INVALIDDATAURL = 18, _
+            $DISCORD_RESULT_INVALIDBASE64 = 19, _
+            $DISCORD_RESULT_NOTFILTERED = 20, _
+            $DISCORD_RESULT_LOBBYFULL = 21, _
+            $DISCORD_RESULT_INVALIDLOBBYSECRET = 22, _
+            $DISCORD_RESULT_INVALIDFILENAME = 23, _
+            $DISCORD_RESULT_INVALIDFILESIZE = 24, _
+            $DISCORD_RESULT_INVALIDENTITLEMENT = 25, _
+            $DISCORD_RESULT_NOTINSTALLED = 26, _
+            $DISCORD_RESULT_NOTRUNNING = 27, _
+            $DISCORD_RESULT_INSUFFICIENTBUFFER = 28, _
+            $DISCORD_RESULT_PURCHASECANCELED = 29, _
+            $DISCORD_RESULT_INVALIDGUILD = 30, _
+            $DISCORD_RESULT_INVALIDEVENT = 31, _
+            $DISCORD_RESULT_INVALIDCHANNEL = 32, _
+            $DISCORD_RESULT_INVALIDORIGIN = 33, _
+            $DISCORD_RESULT_RATELIMITED = 34, _
+            $DISCORD_RESULT_OAUTH2ERROR = 35, _
+            $DISCORD_RESULT_SELECTCHANNELTIMEOUT = 36, _
+            $DISCORD_RESULT_GETGUILDTIMEOUT = 37, _
+            $DISCORD_RESULT_SELECTVOICEFORCEREQUIRED = 38, _
+            $DISCORD_RESULT_CAPTURESHORTCUTALREADYLISTENING = 39, _
+            $DISCORD_RESULT_UNAUTHORIZEDFORACHIEVEMENT = 40, _
+            $DISCORD_RESULT_INVALIDGIFTCODE = 41, _
+            $DISCORD_RESULT_PURCHASEERROR = 42, _
+            $DISCORD_RESULT_TRANSACTIONABORTED = 43
+Global Enum $DISCORD_LOGLEVEL_ERROR = 1, _
             $DISCORD_LOGLEVEL_WARN, _
             $DISCORD_LOGLEVEL_INFO, _
             $DISCORD_LOGLEVEL_DEBUG
+Global Enum $DISCORD_CREATEFLAGS_DEFAULT = 0, _
+            $DISCORD_CREATEFLAGS_NOREQUIREDISCORD
 Global Enum $DISCORD_PREMIUMTYPE_NONE = 0, _
             $DISCORD_PREMIUMTYPE_TIER1, _
             $DISCORD_PREMIUMTYPE_TIER2
@@ -63,6 +62,8 @@ Global Enum $DISCORD_ACTIVITYACTIONTYPE_JOIN = 1, _
 Global Enum $DISCORD_ACTIVITYJOINREQUESTREPLY_NO = 0, _
             $DISCORD_ACTIVITYJOINREQUESTREPLY_YES, _
             $DISCORD_ACTIVITYJOINREQUESTREPLY_IGNORE
+; ===============================================================================================================================
+; #INTERNAL CONSTANTS# ==========================================================================================================
 Global Const $__DISCORD_tagFFICREATEPARAMS = "struct;" & _
                                              "int64 ClientId;" & _
                                              "uint64 Flags;" & _
@@ -414,3 +415,4 @@ Global Const $__DISCORD_tagACHIEVEMENTMANAGERMETHODS = "struct;" & _
                                                        "ptr GetUserAchievement;" & _
                                                        "ptr GetUserAchievementAt;" & _
                                                        "endstruct;"
+; ===============================================================================================================================

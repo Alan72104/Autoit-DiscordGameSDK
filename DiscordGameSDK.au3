@@ -4,10 +4,10 @@
 #include-once
 #include "DiscordGameSDK.Constants.au3"
 #include "DiscordGameSDK.Vars.au3"
-#include "DiscordGameSDK.Core.au3"
 #include "DiscordGameSDK.AchievementManager.au3"
 #include "DiscordGameSDK.ActivityManager.au3"
 #include "DiscordGameSDK.ApplicationManager.au3"
+#include "DiscordGameSDK.Core.au3"
 #include "DiscordGameSDK.ImageManager.au3"
 #include "DiscordGameSDK.LobbyManager.au3"
 #include "DiscordGameSDK.NetworkManager.au3"
@@ -17,4 +17,3 @@
 #include "DiscordGameSDK.StoreManager.au3"
 #include "DiscordGameSDK.UserManager.au3"
 #include "DiscordGameSDK.VoiceManager.au3"
-#include "LibDebug.au3"

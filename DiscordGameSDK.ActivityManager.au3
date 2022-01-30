@@ -9,7 +9,7 @@ Func _Discord_ActivityManager_OnActivityJoin($fnHandler)
     If VarGetType($fnHandler) <> "UserFunction" Then
         Return False
     EndIf
-    $__DISCORD_ACTIVITYMANAGER_afnCallbackHandlers[0] = $fnHandler
+    $__Discord_ActivityManager_afnCallbackHandlers[0] = $fnHandler
     Return True
 EndFunc
 
@@ -21,7 +21,7 @@ Func _Discord_ActivityManager_OnActivitySpectate($fnHandler)
     If VarGetType($fnHandler) <> "UserFunction" Then
         Return False
     EndIf
-    $__DISCORD_ACTIVITYMANAGER_afnCallbackHandlers[1] = $fnHandler
+    $__Discord_ActivityManager_afnCallbackHandlers[1] = $fnHandler
     Return True
 EndFunc
 
@@ -33,7 +33,7 @@ Func _Discord_ActivityManager_OnActivityJoinRequest($fnHandler)
     If VarGetType($fnHandler) <> "UserFunction" Then
         Return False
     EndIf
-    $__DISCORD_ACTIVITYMANAGER_afnCallbackHandlers[2] = $fnHandler
+    $__Discord_ActivityManager_afnCallbackHandlers[2] = $fnHandler
     Return True
 EndFunc
 
@@ -45,7 +45,7 @@ Func _Discord_ActivityManager_OnActivityInvite($fnHandler)
     If VarGetType($fnHandler) <> "UserFunction" Then
         Return False
     EndIf
-    $__DISCORD_ACTIVITYMANAGER_afnCallbackHandlers[3] = $fnHandler
+    $__Discord_ActivityManager_afnCallbackHandlers[3] = $fnHandler
     Return True
 EndFunc
 
@@ -57,7 +57,7 @@ Func _Discord_ActivityManager_RegisterCommand($sCommand)
                                     DllStructGetData($__Discord_atMethodInterfaces[$__DISCORD_ACTIVITYMANAGER], "RegisterCommand"), _
                                     "ptr", $__Discord_apMethodPtrs[$__DISCORD_ACTIVITYMANAGER], _
                                     "str", $sCommand)
-    If $aResult[0] <> $DISCORD_OK Then
+    If $aResult[0] <> $DISCORD_RESULT_OK Then
         Return SetError($aResult[0], 0, False)
     EndIf
     Return True
@@ -71,7 +71,7 @@ Func _Discord_ActivityManager_RegisterSteam($iSteamId)
                                     DllStructGetData($__Discord_atMethodInterfaces[$__DISCORD_ACTIVITYMANAGER], "RegisterSteam"), _
                                     "ptr", $__Discord_apMethodPtrs[$__DISCORD_ACTIVITYMANAGER], _
                                     "int", $iSteamId)
-    If $aResult[0] <> $DISCORD_OK Then
+    If $aResult[0] <> $DISCORD_RESULT_OK Then
         Return SetError($aResult[0], 0, False)
     EndIf
     Return True
@@ -88,10 +88,10 @@ Func _Discord_ActivityManager_UpdateActivity($aActivity, $fnHandler)
     If UBound($aActivity) <> 18 Then
         Return False
     EndIf
-    If $__DISCORD_ACTIVITYMANAGER_hUpdateActivityCallback = 0 Then
-        $__DISCORD_ACTIVITYMANAGER_hUpdateActivityCallback = DllCallbackRegister("__Discord_ActivityManager_UpdateActivityCallbackHandler", "none:cdecl", "ptr;int")
+    If $__Discord_ActivityManager_hUpdateActivityCallback = 0 Then
+        $__Discord_ActivityManager_hUpdateActivityCallback = DllCallbackRegister("__Discord_ActivityManager_UpdateActivityCallbackHandler", "none:cdecl", "ptr;int")
     EndIf
-    $__DISCORD_ACTIVITYMANAGER_fnUpdateActivityCallbackHandler = $fnHandler
+    $__Discord_ActivityManager_fnUpdateActivityCallbackHandler = $fnHandler
     Local $tActivity = DllStructCreate($__DISCORD_tagACTIVITY)
     ; ActivityType is strictly for the purpose of handling events that you receive from Discord; though the SDK/our API will not reject a payload with an ActivityType sent, it will be discarded and will not change anything in the client.
     ; DllStructSetData($tActivity, "Type", $aActivity[0])
@@ -117,7 +117,7 @@ Func _Discord_ActivityManager_UpdateActivity($aActivity, $fnHandler)
                                     "ptr", $__Discord_apMethodPtrs[$__DISCORD_ACTIVITYMANAGER], _
                                     "ptr", DllStructGetPtr($tActivity), _
                                     "ptr", Null, _
-                                    "ptr", DllCallbackGetPtr($__DISCORD_ACTIVITYMANAGER_hUpdateActivityCallback))
+                                    "ptr", DllCallbackGetPtr($__Discord_ActivityManager_hUpdateActivityCallback))
     Return True
 EndFunc
 
@@ -129,15 +129,15 @@ Func _Discord_ActivityManager_ClearActivity($aActivity, $fnHandler)
     If VarGetType($fnHandler) <> "UserFunction" Then
         Return False
     EndIf
-    If $__DISCORD_ACTIVITYMANAGER_hClearActivityCallback = 0 Then
-        $__DISCORD_ACTIVITYMANAGER_hClearActivityCallback = DllCallbackRegister("__Discord_ActivityManager_ClearActivityCallbackHandler", "none:cdecl", "ptr;int")
+    If $__Discord_ActivityManager_hClearActivityCallback = 0 Then
+        $__Discord_ActivityManager_hClearActivityCallback = DllCallbackRegister("__Discord_ActivityManager_ClearActivityCallbackHandler", "none:cdecl", "ptr;int")
     EndIf
-    $__DISCORD_ACTIVITYMANAGER_fnClearActivityCallbackHandler = $fnHandler
+    $__Discord_ActivityManager_fnClearActivityCallbackHandler = $fnHandler
     Local $aResult = DllCallAddress("none:cdecl", _
                                     DllStructGetData($__Discord_atMethodInterfaces[$__DISCORD_ACTIVITYMANAGER], "ClearActivity"), _
                                     "ptr", $__Discord_apMethodPtrs[$__DISCORD_ACTIVITYMANAGER], _
                                     "ptr", Null, _
-                                    "ptr", DllCallbackGetPtr($__DISCORD_ACTIVITYMANAGER_hClearActivityCallback))
+                                    "ptr", DllCallbackGetPtr($__Discord_ActivityManager_hClearActivityCallback))
     Return True
 EndFunc
 
@@ -149,17 +149,17 @@ Func _Discord_ActivityManager_SendRequestReply($iUserId, $iReply, $fnHandler)
     If VarGetType($fnHandler) <> "UserFunction" Then
         Return False
     EndIf
-    If $__DISCORD_ACTIVITYMANAGER_hSendRequestReplyCallback = 0 Then
-        $__DISCORD_ACTIVITYMANAGER_hSendRequestReplyCallback = DllCallbackRegister("__Discord_ActivityManager_SendRequestReplyCallbackHandler", "none:cdecl", "ptr;int")
+    If $__Discord_ActivityManager_hSendRequestReplyCallback = 0 Then
+        $__Discord_ActivityManager_hSendRequestReplyCallback = DllCallbackRegister("__Discord_ActivityManager_SendRequestReplyCallbackHandler", "none:cdecl", "ptr;int")
     EndIf
-    $__DISCORD_ACTIVITYMANAGER_fnSendRequestReplyCallbackHandler = $fnHandler
+    $__Discord_ActivityManager_fnSendRequestReplyCallbackHandler = $fnHandler
     Local $aResult = DllCallAddress("none:cdecl", _
                                     DllStructGetData($__Discord_atMethodInterfaces[$__DISCORD_ACTIVITYMANAGER], "SendRequestReply"), _
                                     "ptr", $__Discord_apMethodPtrs[$__DISCORD_ACTIVITYMANAGER], _
                                     "int64", $iUserId, _
                                     "int", $iReply, _
                                     "ptr", Null, _
-                                    "ptr", DllCallbackGetPtr($__DISCORD_ACTIVITYMANAGER_hSendRequestReplyCallback))
+                                    "ptr", DllCallbackGetPtr($__Discord_ActivityManager_hSendRequestReplyCallback))
     Return True
 EndFunc
 
@@ -171,10 +171,10 @@ Func _Discord_ActivityManager_SendInvite($iUserId, $iType, $sContent, $fnHandler
     If VarGetType($fnHandler) <> "UserFunction" Then
         Return False
     EndIf
-    If $__DISCORD_ACTIVITYMANAGER_hSendInviteCallback = 0 Then
-        $__DISCORD_ACTIVITYMANAGER_hSendInviteCallback = DllCallbackRegister("__Discord_ActivityManager_SendInviteCallbackHandler", "none:cdecl", "ptr;int")
+    If $__Discord_ActivityManager_hSendInviteCallback = 0 Then
+        $__Discord_ActivityManager_hSendInviteCallback = DllCallbackRegister("__Discord_ActivityManager_SendInviteCallbackHandler", "none:cdecl", "ptr;int")
     EndIf
-    $__DISCORD_ACTIVITYMANAGER_fnSendInviteCallbackHandler = $fnHandler
+    $__Discord_ActivityManager_fnSendInviteCallbackHandler = $fnHandler
     Local $aResult = DllCallAddress("none:cdecl", _
                                     DllStructGetData($__Discord_atMethodInterfaces[$__DISCORD_ACTIVITYMANAGER], "SendInvite"), _
                                     "ptr", $__Discord_apMethodPtrs[$__DISCORD_ACTIVITYMANAGER], _
@@ -182,7 +182,7 @@ Func _Discord_ActivityManager_SendInvite($iUserId, $iType, $sContent, $fnHandler
                                     "int", $iType, _
                                     "str", $sContent, _
                                     "ptr", Null, _
-                                    "ptr", DllCallbackGetPtr($__DISCORD_ACTIVITYMANAGER_hSendInviteCallback))
+                                    "ptr", DllCallbackGetPtr($__Discord_ActivityManager_hSendInviteCallback))
     Return True
 EndFunc
 
@@ -194,16 +194,16 @@ Func _Discord_ActivityManager_AcceptInvite($iUserId, $fnHandler)
     If VarGetType($fnHandler) <> "UserFunction" Then
         Return False
     EndIf
-    If $__DISCORD_ACTIVITYMANAGER_hAcceptInviteCallback = 0 Then
-        $__DISCORD_ACTIVITYMANAGER_hAcceptInviteCallback = DllCallbackRegister("__Discord_ActivityManager_AcceptInviteCallbackHandler", "none:cdecl", "ptr;int")
+    If $__Discord_ActivityManager_hAcceptInviteCallback = 0 Then
+        $__Discord_ActivityManager_hAcceptInviteCallback = DllCallbackRegister("__Discord_ActivityManager_AcceptInviteCallbackHandler", "none:cdecl", "ptr;int")
     EndIf
-    $__DISCORD_ACTIVITYMANAGER_fnAcceptInviteCallbackHandler = $fnHandler
+    $__Discord_ActivityManager_fnAcceptInviteCallbackHandler = $fnHandler
     Local $aResult = DllCallAddress("none:cdecl", _
                                     DllStructGetData($__Discord_atMethodInterfaces[$__DISCORD_ACTIVITYMANAGER], "AcceptInvite"), _
                                     "ptr", $__Discord_apMethodPtrs[$__DISCORD_ACTIVITYMANAGER], _
                                     "int64", $iUserId, _
                                     "ptr", Null, _
-                                    "ptr", DllCallbackGetPtr($__DISCORD_ACTIVITYMANAGER_hAcceptInviteCallback))
+                                    "ptr", DllCallbackGetPtr($__Discord_ActivityManager_hAcceptInviteCallback))
     Return True
 EndFunc
 
@@ -216,54 +216,54 @@ Func __Discord_ActivityManager_Init()
 EndFunc
 
 Func __Discord_ActivityManager_InitEvents()
-    $__DISCORD_ACTIVITYMANAGER_afnCallbackHandlers[0] = 0
-    $__DISCORD_ACTIVITYMANAGER_ahCallbacks[0] = DllCallbackRegister("__DISCORD_ACTIVITYMANAGER_OnActivityJoinHandler", "none:cdecl", "ptr;str")
-    DllStructSetData($__Discord_atEventInterfaces[$__DISCORD_ACTIVITYMANAGER], "OnActivityJoin", DllCallbackGetPtr($__DISCORD_ACTIVITYMANAGER_ahCallbacks[0]))
-    $__DISCORD_ACTIVITYMANAGER_afnCallbackHandlers[1] = 0
-    $__DISCORD_ACTIVITYMANAGER_ahCallbacks[1] = DllCallbackRegister("__DISCORD_ACTIVITYMANAGER_OnActivitySpectateHandler", "none:cdecl", "ptr;str")
-    DllStructSetData($__Discord_atEventInterfaces[$__DISCORD_ACTIVITYMANAGER], "OnActivitySpectate", DllCallbackGetPtr($__DISCORD_ACTIVITYMANAGER_ahCallbacks[1]))
-    $__DISCORD_ACTIVITYMANAGER_afnCallbackHandlers[2] = 0
-    $__DISCORD_ACTIVITYMANAGER_ahCallbacks[2] = DllCallbackRegister("__DISCORD_ACTIVITYMANAGER_OnActivityJoinRequestHandler", "none:cdecl", "ptr;ptr")
-    DllStructSetData($__Discord_atEventInterfaces[$__DISCORD_ACTIVITYMANAGER], "OnActivitySpectate", DllCallbackGetPtr($__DISCORD_ACTIVITYMANAGER_ahCallbacks[2]))
-    $__DISCORD_ACTIVITYMANAGER_afnCallbackHandlers[3] = 0
-    $__DISCORD_ACTIVITYMANAGER_ahCallbacks[3] = DllCallbackRegister("__DISCORD_ACTIVITYMANAGER_OnActivityInviteHandler", "none:cdecl", "ptr;int;ptr;ptr")
-    DllStructSetData($__Discord_atEventInterfaces[$__DISCORD_ACTIVITYMANAGER], "OnActivitySpectate", DllCallbackGetPtr($__DISCORD_ACTIVITYMANAGER_ahCallbacks[3]))
+    $__Discord_ActivityManager_afnCallbackHandlers[0] = 0
+    $__Discord_ActivityManager_ahCallbacks[0] = DllCallbackRegister("__DISCORD_ACTIVITYMANAGER_OnActivityJoinHandler", "none:cdecl", "ptr;str")
+    DllStructSetData($__Discord_atEventInterfaces[$__DISCORD_ACTIVITYMANAGER], "OnActivityJoin", DllCallbackGetPtr($__Discord_ActivityManager_ahCallbacks[0]))
+    $__Discord_ActivityManager_afnCallbackHandlers[1] = 0
+    $__Discord_ActivityManager_ahCallbacks[1] = DllCallbackRegister("__DISCORD_ACTIVITYMANAGER_OnActivitySpectateHandler", "none:cdecl", "ptr;str")
+    DllStructSetData($__Discord_atEventInterfaces[$__DISCORD_ACTIVITYMANAGER], "OnActivitySpectate", DllCallbackGetPtr($__Discord_ActivityManager_ahCallbacks[1]))
+    $__Discord_ActivityManager_afnCallbackHandlers[2] = 0
+    $__Discord_ActivityManager_ahCallbacks[2] = DllCallbackRegister("__DISCORD_ACTIVITYMANAGER_OnActivityJoinRequestHandler", "none:cdecl", "ptr;ptr")
+    DllStructSetData($__Discord_atEventInterfaces[$__DISCORD_ACTIVITYMANAGER], "OnActivitySpectate", DllCallbackGetPtr($__Discord_ActivityManager_ahCallbacks[2]))
+    $__Discord_ActivityManager_afnCallbackHandlers[3] = 0
+    $__Discord_ActivityManager_ahCallbacks[3] = DllCallbackRegister("__DISCORD_ACTIVITYMANAGER_OnActivityInviteHandler", "none:cdecl", "ptr;int;ptr;ptr")
+    DllStructSetData($__Discord_atEventInterfaces[$__DISCORD_ACTIVITYMANAGER], "OnActivitySpectate", DllCallbackGetPtr($__Discord_ActivityManager_ahCallbacks[3]))
 EndFunc
 
 ; Handler for: void ActivityJoinHandler(IntPtr ptr, string secret)
 Func __Discord_ActivityManager_OnActivityJoinHandler($pPtr, $sSecret)
     #forceref $pPtr
-    If $__DISCORD_ACTIVITYMANAGER_afnCallbackHandlers[0] <> 0 Then
-        $__DISCORD_ACTIVITYMANAGER_afnCallbackHandlers[0]($sSecret)
+    If $__Discord_ActivityManager_afnCallbackHandlers[0] <> 0 Then
+        $__Discord_ActivityManager_afnCallbackHandlers[0]($sSecret)
     EndIf
 EndFunc
 
 ; Handler for: void ActivitySpectateHandler(IntPtr ptr, string secret)
 Func __DISCORD_ACTIVITYMANAGER_OnActivitySpectateHandler($pPtr, $sSecret)
     #forceref $pPtr
-    If $__DISCORD_ACTIVITYMANAGER_afnCallbackHandlers[1] <> 0 Then
-        $__DISCORD_ACTIVITYMANAGER_afnCallbackHandlers[1]($sSecret)
+    If $__Discord_ActivityManager_afnCallbackHandlers[1] <> 0 Then
+        $__Discord_ActivityManager_afnCallbackHandlers[1]($sSecret)
     EndIf
 EndFunc
 
 ; Handler for: void ActivityJoinRequestHandler(IntPtr ptr, ref User user)
 Func __DISCORD_ACTIVITYMANAGER_OnActivityJoinRequestHandler($pPtr, $pUser)
     #forceref $pPtr
-    If $__DISCORD_ACTIVITYMANAGER_afnCallbackHandlers[2] <> 0 Then
+    If $__Discord_ActivityManager_afnCallbackHandlers[2] <> 0 Then
         Local $tUser = DllStructCreate($__DISCORD_tagUSER, $pUser)
         Local $aUser = [DllStructGetData($tUser, "Id"), _
                         DllStructGetData($tUser, "Username"), _
                         DllStructGetData($tUser, "Discriminator"), _
                         DllStructGetData($tUser, "Avatar"), _
                         DllStructGetData($tUser, "Bot")]
-        $__DISCORD_ACTIVITYMANAGER_afnCallbackHandlers[2]($aUser)
+        $__Discord_ActivityManager_afnCallbackHandlers[2]($aUser)
     EndIf
 EndFunc
 
 ; Handler for: void ActivityInviteHandler(IntPtr ptr, ActivityActionType type, ref User user, ref Activity activity)
 Func __DISCORD_ACTIVITYMANAGER_OnActivityInviteHandler($pPtr, $iType, $pUser, $pActivity)
     #forceref $pPtr
-    If $__DISCORD_ACTIVITYMANAGER_afnCallbackHandlers[3] <> 0 Then
+    If $__Discord_ActivityManager_afnCallbackHandlers[3] <> 0 Then
         Local $tUser = DllStructCreate($__DISCORD_tagUSER, $pUser)
         Local $aUser = [DllStructGetData($tUser, "Id"), _
                         DllStructGetData($tUser, "Username"), _
@@ -289,75 +289,75 @@ Func __DISCORD_ACTIVITYMANAGER_OnActivityInviteHandler($pPtr, $iType, $pUser, $p
                             DllStructGetData($tActivity, "Secrets_Join"), _
                             DllStructGetData($tActivity, "Secrets_Spectate"), _
                             DllStructGetData($tActivity, "Instance")]
-        $__DISCORD_ACTIVITYMANAGER_afnCallbackHandlers[3]($iType, $aUser, $aActivity)
+        $__Discord_ActivityManager_afnCallbackHandlers[3]($iType, $aUser, $aActivity)
     EndIf
 EndFunc
 
 ; Handler for: void UpdateActivityCallback(IntPtr ptr, Result result)
 Func __Discord_ActivityManager_UpdateActivityCallbackHandler($pPtr, $iResult)
     #forceref $pPtr
-    If $__DISCORD_ACTIVITYMANAGER_fnUpdateActivityCallbackHandler <> 0 Then
-        $__DISCORD_ACTIVITYMANAGER_fnUpdateActivityCallbackHandler($iResult)
+    If $__Discord_ActivityManager_fnUpdateActivityCallbackHandler <> 0 Then
+        $__Discord_ActivityManager_fnUpdateActivityCallbackHandler($iResult)
     EndIf
 EndFunc
 
 ; Handler for: void ClearActivityCallback(IntPtr ptr, Result result)
 Func __Discord_ActivityManager_ClearActivityCallbackHandler($pPtr, $iResult)
     #forceref $pPtr
-    If $__DISCORD_ACTIVITYMANAGER_fnClearActivityCallbackHandler <> 0 Then
-        $__DISCORD_ACTIVITYMANAGER_fnClearActivityCallbackHandler($iResult)
+    If $__Discord_ActivityManager_fnClearActivityCallbackHandler <> 0 Then
+        $__Discord_ActivityManager_fnClearActivityCallbackHandler($iResult)
     EndIf
 EndFunc
 
 ; Handler for: void SendRequestReplyCallback(IntPtr ptr, Result result)
 Func __Discord_ActivityManager_SendRequestReplyCallbackHandler($pPtr, $iResult)
     #forceref $pPtr
-    If $__DISCORD_ACTIVITYMANAGER_fnSendRequestReplyCallbackHandler <> 0 Then
-        $__DISCORD_ACTIVITYMANAGER_fnSendRequestReplyCallbackHandler($iResult)
+    If $__Discord_ActivityManager_fnSendRequestReplyCallbackHandler <> 0 Then
+        $__Discord_ActivityManager_fnSendRequestReplyCallbackHandler($iResult)
     EndIf
 EndFunc
 
 ; Handler for: void SendInviteCallback(IntPtr ptr, Result result)
 Func __Discord_ActivityManager_SendInviteCallbackHandler($pPtr, $iResult)
     #forceref $pPtr
-    If $__DISCORD_ACTIVITYMANAGER_fnSendInviteCallbackHandler <> 0 Then
-        $__DISCORD_ACTIVITYMANAGER_fnSendInviteCallbackHandler($iResult)
+    If $__Discord_ActivityManager_fnSendInviteCallbackHandler <> 0 Then
+        $__Discord_ActivityManager_fnSendInviteCallbackHandler($iResult)
     EndIf
 EndFunc
 
 ; Handler for: void AcceptInviteCallback(IntPtr ptr, Result result)
 Func __Discord_ActivityManager_AcceptInviteCallbackHandler($pPtr, $iResult)
     #forceref $pPtr
-    If $__DISCORD_ACTIVITYMANAGER_fnAcceptInviteCallbackHandler <> 0 Then
-        $__DISCORD_ACTIVITYMANAGER_fnAcceptInviteCallbackHandler($iResult)
+    If $__Discord_ActivityManager_fnAcceptInviteCallbackHandler <> 0 Then
+        $__Discord_ActivityManager_fnAcceptInviteCallbackHandler($iResult)
     EndIf
 EndFunc
 
 Func __Discord_ActivityManager_Dispose()
-    For $i = 0 To UBound($__DISCORD_ACTIVITYMANAGER_ahCallbacks) - 1
-        If $__DISCORD_ACTIVITYMANAGER_ahCallbacks[$i] Then
-            DllCallbackFree($__DISCORD_ACTIVITYMANAGER_ahCallbacks[$i])
-            $__DISCORD_ACTIVITYMANAGER_ahCallbacks[$i] = 0
+    For $i = 0 To UBound($__Discord_ActivityManager_ahCallbacks) - 1
+        If $__Discord_ActivityManager_ahCallbacks[$i] Then
+            DllCallbackFree($__Discord_ActivityManager_ahCallbacks[$i])
+            $__Discord_ActivityManager_ahCallbacks[$i] = 0
         EndIf
     Next
-    If $__DISCORD_ACTIVITYMANAGER_hUpdateActivityCallback Then
-        DllCallbackFree($__DISCORD_ACTIVITYMANAGER_hUpdateActivityCallback)
-        $__DISCORD_ACTIVITYMANAGER_hUpdateActivityCallback = 0
+    If $__Discord_ActivityManager_hUpdateActivityCallback Then
+        DllCallbackFree($__Discord_ActivityManager_hUpdateActivityCallback)
+        $__Discord_ActivityManager_hUpdateActivityCallback = 0
     EndIf
-    If $__DISCORD_ACTIVITYMANAGER_hClearActivityCallback Then
-        DllCallbackFree($__DISCORD_ACTIVITYMANAGER_hClearActivityCallback)
-        $__DISCORD_ACTIVITYMANAGER_hClearActivityCallback = 0
+    If $__Discord_ActivityManager_hClearActivityCallback Then
+        DllCallbackFree($__Discord_ActivityManager_hClearActivityCallback)
+        $__Discord_ActivityManager_hClearActivityCallback = 0
     EndIf
-    If $__DISCORD_ACTIVITYMANAGER_hSendRequestReplyCallback Then
-        DllCallbackFree($__DISCORD_ACTIVITYMANAGER_hSendRequestReplyCallback)
-        $__DISCORD_ACTIVITYMANAGER_hSendRequestReplyCallback = 0
+    If $__Discord_ActivityManager_hSendRequestReplyCallback Then
+        DllCallbackFree($__Discord_ActivityManager_hSendRequestReplyCallback)
+        $__Discord_ActivityManager_hSendRequestReplyCallback = 0
     EndIf
-    If $__DISCORD_ACTIVITYMANAGER_hSendInviteCallback Then
-        DllCallbackFree($__DISCORD_ACTIVITYMANAGER_hSendInviteCallback)
-        $__DISCORD_ACTIVITYMANAGER_hSendInviteCallback = 0
+    If $__Discord_ActivityManager_hSendInviteCallback Then
+        DllCallbackFree($__Discord_ActivityManager_hSendInviteCallback)
+        $__Discord_ActivityManager_hSendInviteCallback = 0
     EndIf
-    If $__DISCORD_ACTIVITYMANAGER_hAcceptInviteCallback Then
-        DllCallbackFree($__DISCORD_ACTIVITYMANAGER_hAcceptInviteCallback)
-        $__DISCORD_ACTIVITYMANAGER_hAcceptInviteCallback = 0
+    If $__Discord_ActivityManager_hAcceptInviteCallback Then
+        DllCallbackFree($__Discord_ActivityManager_hAcceptInviteCallback)
+        $__Discord_ActivityManager_hAcceptInviteCallback = 0
     EndIf
 EndFunc

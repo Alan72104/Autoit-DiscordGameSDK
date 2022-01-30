@@ -22,7 +22,7 @@ Func _Discord_UserManager_GetCurrentUser()
                                     DllStructGetData($__Discord_atMethodInterfaces[$__DISCORD_USERMANAGER], "GetCurrentUser"), _
                                     "ptr", $__Discord_apMethodPtrs[$__DISCORD_USERMANAGER], _
                                     "ptr", DllStructGetPtr($tUser))
-    If $aResult[0] <> $DISCORD_OK Then
+    If $aResult[0] <> $DISCORD_RESULT_OK Then
         Return SetError($aResult[0], 0, False)
     EndIf
     Local $aUser = [DllStructGetData($tUser, "Id"), _
@@ -65,7 +65,7 @@ Func _Discord_UserManager_GetCurrentUserPremiumType()
                                     DllStructGetData($__Discord_atMethodInterfaces[$__DISCORD_USERMANAGER], "GetCurrentUserPremiumType"), _
                                     "ptr", $__Discord_apMethodPtrs[$__DISCORD_USERMANAGER], _
                                     "int", 0)
-    If $aResult[0] <> $DISCORD_OK Then
+    If $aResult[0] <> $DISCORD_RESULT_OK Then
         Return SetError(-1, @error, False)
     EndIf
     Local $iPremiumType = $aResult[2]
@@ -80,7 +80,7 @@ Func _Discord_UserManager_CurrentUserHasFlag()
                                     DllStructGetData($__Discord_atMethodInterfaces[$__DISCORD_USERMANAGER], "CurrentUserHasFlag"), _
                                     "ptr", $__Discord_apMethodPtrs[$__DISCORD_USERMANAGER], _
                                     "boolean", 0)
-    If $aResult[0] <> $DISCORD_OK Then
+    If $aResult[0] <> $DISCORD_RESULT_OK Then
         Return SetError(-1, @error, False)
     EndIf
     Local $bFlag = $aResult[2]
