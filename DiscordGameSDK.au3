@@ -4,6 +4,42 @@
 #include-once
 #include "DiscordGameSDK.Constants.au3"
 
+; #INDEX# =======================================================================================================================
+; Title .........: DiscordGameSDK wrapper
+; AutoIt Version : 3.3.14.5
+; Description ...: DiscordGameSDK wrapper
+; Author(s) .....: Alan72104#4011
+; Dll ...........: discord_game_sdk32.dll, discord_game_sdk64.dll
+; ===============================================================================================================================
+
+; #CURRENT# =====================================================================================================================
+;_Discord_Init
+;_Discord_SetLogHook
+;_Discord_GetResultString
+;_Discord_RunCallbacks
+;_Discord_ActivityManager_OnActivityJoin
+;_Discord_ActivityManager_OnActivitySpectate
+;_Discord_ActivityManager_OnActivityJoinRequest
+;_Discord_ActivityManager_OnActivityInvite
+;_Discord_ActivityManager_RegisterCommand
+;_Discord_ActivityManager_RegisterSteam
+;_Discord_ActivityManager_UpdateActivity
+;_Discord_ActivityManager_ClearActivity
+;_Discord_ActivityManager_SendRequestReply
+;_Discord_ActivityManager_SendInvite
+;_Discord_ActivityManager_AcceptInvite
+;_Discord_ApplicationManager_GetCurrentLocale
+;_Discord_ApplicationManager_GetCurrentBranch
+;_Discord_ApplicationManager_ValidateOrExit
+;_Discord_ApplicationManager_GetOAuth2Token
+;_Discord_ApplicationManager_GetTicket
+;_Discord_UserManager_OnCurrentUserUpdate
+;_Discord_UserManager_GetCurrentUser
+;_Discord_UserManager_GetUser
+;_Discord_UserManager_GetCurrentUserPremiumType
+;_Discord_UserManager_CurrentUserHasFlag
+; ===============================================================================================================================
+
 #region Internal variables
 Global $__Discord_hDll = 0
 Global $__Discord_atEventInterfaces[$__DISCORD_CLASSCOUNT]  ; Event tables (Callback function ptr tables)
@@ -769,7 +805,7 @@ Func __Discord_ActivityManager_OnActivityJoinHandler($pPtr, $sSecret)
 EndFunc
 
 ; Handler for: void ActivitySpectateHandler(IntPtr ptr, string secret)
-Func __DISCORD_ACTIVITYMANAGER_OnActivitySpectateHandler($pPtr, $sSecret)
+Func __Discord_ActivityManager_OnActivitySpectateHandler($pPtr, $sSecret)
     #forceref $pPtr
     If $__Discord_ActivityManager_afnCallbackHandlers[1] <> 0 Then
         $__Discord_ActivityManager_afnCallbackHandlers[1]($sSecret)
@@ -777,7 +813,7 @@ Func __DISCORD_ACTIVITYMANAGER_OnActivitySpectateHandler($pPtr, $sSecret)
 EndFunc
 
 ; Handler for: void ActivityJoinRequestHandler(IntPtr ptr, ref User user)
-Func __DISCORD_ACTIVITYMANAGER_OnActivityJoinRequestHandler($pPtr, $pUser)
+Func __Discord_ActivityManager_OnActivityJoinRequestHandler($pPtr, $pUser)
     #forceref $pPtr
     If $__Discord_ActivityManager_afnCallbackHandlers[2] <> 0 Then
         Local $tUser = DllStructCreate($__DISCORD_tagUSER, $pUser)
@@ -791,7 +827,7 @@ Func __DISCORD_ACTIVITYMANAGER_OnActivityJoinRequestHandler($pPtr, $pUser)
 EndFunc
 
 ; Handler for: void ActivityInviteHandler(IntPtr ptr, ActivityActionType type, ref User user, ref Activity activity)
-Func __DISCORD_ACTIVITYMANAGER_OnActivityInviteHandler($pPtr, $iType, $pUser, $pActivity)
+Func __Discord_ActivityManager_OnActivityInviteHandler($pPtr, $iType, $pUser, $pActivity)
     #forceref $pPtr
     If $__Discord_ActivityManager_afnCallbackHandlers[3] <> 0 Then
         Local $tUser = DllStructCreate($__DISCORD_tagUSER, $pUser)
