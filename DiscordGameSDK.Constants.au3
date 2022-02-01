@@ -62,6 +62,11 @@ Global Enum $DISCORD_ACTIVITYACTIONTYPE_JOIN = 1, _
 Global Enum $DISCORD_ACTIVITYJOINREQUESTREPLY_NO = 0, _
             $DISCORD_ACTIVITYJOINREQUESTREPLY_YES, _
             $DISCORD_ACTIVITYJOINREQUESTREPLY_IGNORE
+Global Enum $DISCORD_USERFLAG_PARTNER = 2, _
+            $DISCORD_USERFLAG_HYPESQUADEVENTS = 4, _
+            $DISCORD_USERFLAG_HYPESQUADHOUSE1 = 64, _
+            $DISCORD_USERFLAG_HYPESQUADHOUSE2 = 128, _
+            $DISCORD_USERFLAG_HYPESQUADHOUSE3 = 256
 ; ===============================================================================================================================
 ; #INTERNAL CONSTANTS# ==========================================================================================================
 Global Const $__DISCORD_tagFFICREATEPARAMS = "struct;" & _
