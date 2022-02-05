@@ -23,6 +23,7 @@
 ;_Discord_ActivityManager_OnActivityInvite
 ;_Discord_ActivityManager_RegisterCommand
 ;_Discord_ActivityManager_RegisterSteam
+;_Discord_ActivityManager_MakeActivitySimple
 ;_Discord_ActivityManager_UpdateActivity
 ;_Discord_ActivityManager_ClearActivity
 ;_Discord_ActivityManager_SendRequestReply
@@ -38,6 +39,31 @@
 ;_Discord_UserManager_GetUser
 ;_Discord_UserManager_GetCurrentUserPremiumType
 ;_Discord_UserManager_CurrentUserHasFlag
+;_Discord_NetworkManager_OnMessage
+;_Discord_NetworkManager_OnRouteUpdate
+;_Discord_NetworkManager_GetPeerId
+;_Discord_NetworkManager_Flush
+;_Discord_NetworkManager_OpenPeer
+;_Discord_NetworkManager_UpdatePeer
+;_Discord_NetworkManager_ClosePeer
+;_Discord_NetworkManager_OpenChannel
+;_Discord_NetworkManager_CloseChannel
+;_Discord_NetworkManager_SendMessage
+;_Discord_OverlayManager_IsEnabled
+;_Discord_OverlayManager_IsLocked
+;_Discord_OverlayManager_SetLocked
+;_Discord_OverlayManager_OpenActivityInvite
+;_Discord_OverlayManager_OpenGuildInvite
+;_Discord_OverlayManager_OpenVoiceSettings
+;_Discord_ImageManager_Fetch
+;_Discord_ImageManager_GetDimensions
+;_Discord_ImageManager_GetData
+;_Discord_AchievementManager_OnUserAchievementUpdate
+;_Discord_AchievementManager_SetUserAchievement
+;_Discord_AchievementManager_FetchUserAchievements
+;_Discord_AchievementManager_CountUserAchievements
+;_Discord_AchievementManager_GetUserAchievement
+;_Discord_AchievementManager_GetUserAchievementAt
 ; ===============================================================================================================================
 
 #region Internal variables
@@ -72,6 +98,30 @@ Global $__Discord_UserManager_ahCallbacks[1]
 Global $__Discord_UserManager_afnCallbackHandlers[1]
 Global $__Discord_UserManager_hGetUserCallback = 0
 Global $__Discord_UserManager_fnGetUserCallbackHandler = 0
+
+Global $__Discord_NetworkManager_ahCallbacks[2]
+Global $__Discord_NetworkManager_afnCallbackHandlers[2]
+
+Global $__Discord_OverlayManager_ahCallbacks[1]
+Global $__Discord_OverlayManager_afnCallbackHandlers[1]
+Global $__Discord_OverlayManager_hSetLockedCallback = 0
+Global $__Discord_OverlayManager_fnSetLockedCallbackHandler = 0
+Global $__Discord_OverlayManager_hOpenActivityInviteCallback = 0
+Global $__Discord_OverlayManager_fnOpenActivityInviteCallbackHandler = 0
+Global $__Discord_OverlayManager_hOpenGuildInviteCallback = 0
+Global $__Discord_OverlayManager_fnOpenGuildInviteCallbackHandler = 0
+Global $__Discord_OverlayManager_hOpenVoiceSettingsCallback = 0
+Global $__Discord_OverlayManager_fnOpenVoiceSettingsCallbackHandler = 0
+
+Global $__Discord_ImageManager_hFetchCallback = 0
+Global $__Discord_ImageManager_fnFetchCallbackHandler = 0
+
+Global $__Discord_AchievementManager_ahCallbacks[1]
+Global $__Discord_AchievementManager_afnCallbackHandlers[1]
+Global $__Discord_AchievementManager_hSetUserAchievementCallback = 0
+Global $__Discord_AchievementManager_fnSetUserAchievementCallbackHandler = 0
+Global $__Discord_AchievementManager_hFetchUserAchievementsCallback = 0
+Global $__Discord_AchievementManager_fnFetchUserAchievementsCallbackHandler = 0
 #endregion Internal variables
 
 #region Core public functions
@@ -92,7 +142,7 @@ Global $__Discord_UserManager_fnGetUserCallbackHandler = 0
 ;                          | 5 - Failed to call dll with @extended = DllCall error
 ;                          | 6 - Discord error with @extended = Discord result
 ; Author ........: Alan72104#4011
-; Modified.......: 
+; Modified.......:
 ; Remarks .......: Remember to pass "application client id" not your user id, or will result in undefined behavior or crash
 ;                  All SDK enum names share a template of $DISCORD_{TYPE}_{VALUE} e.g. $DISCORD_LOGLEVEL_INFO
 ;                  Enum types in function parameter lists are shown in ALLCAP     e.g. LOGLEVEL
@@ -176,7 +226,7 @@ Func _Discord_Init($iDiscordId, $iFlags = $DISCORD_CREATEFLAGS_DEFAULT, $sDllFol
     ; Result DiscordCreate(UInt32 version, ref FFICreateParams createParams, out IntPtr manager);
     Local $aResult = DllCall($__Discord_hDll, "int:cdecl", "DiscordCreate", "uint", 2, "ptr", DllStructGetPtr($tParams), "ptr*", Null)
     $__Discord_apMethodPtrs[$__DISCORD_CORE] = $aResult[3]
-    
+
     If @error Then
         Return SetError(5, @error, False)
     EndIf
@@ -214,8 +264,8 @@ EndFunc
 ; Return values .: Success            - True
 ;                  Invalid parameters - False
 ; Author ........: Alan72104#4011
-; Modified.......: 
-; Remarks .......: 
+; Modified.......:
+; Remarks .......:
 ; Related .......: $DISCORD_LOGLEVEL...
 ; Link ..........: https://discord.com/developers/docs/game-sdk/discord#setloghook
 ; ===============================================================================================================================
@@ -244,7 +294,7 @@ EndFunc
 ; Return values .: Success - Result string
 ;                  Failure - "Invalid result code"
 ; Author ........: Alan72104#4011
-; Modified.......: 
+; Modified.......:
 ; Remarks .......: Enum number to name
 ; Related .......: $DISCORD_RESULT...
 ; Link ..........: https://discord.com/developers/docs/game-sdk/discord#data-models
@@ -351,7 +401,7 @@ EndFunc
 ; Parameters ....: None
 ; Return values .: Discord result
 ; Author ........: Alan72104#4011
-; Modified.......: 
+; Modified.......:
 ; Remarks .......: Put this in your game's main event loop, like Update()
 ;                  This function also serves as a way to know that the local Discord client is still connected
 ;                  If the user closes Discord while playing your game, RunCallbacks() will return $DISCORD_RESULT_NOTRUNNING
@@ -392,10 +442,10 @@ Func __Discord_Dispose()
     __Discord_StoreManager_Dispose()
     __Discord_UserManager_Dispose()
     __Discord_VoiceManager_Dispose()
-    Local $timer = TimerInit()
-    While TimerDiff($timer) < 250
-        _Discord_RunCallbacks()
-    WEnd
+    ; Local $timer = TimerInit()
+    ; While TimerDiff($timer) < 250
+        ; _Discord_RunCallbacks()
+    ; WEnd
     If $__Discord_apMethodPtrs[$__DISCORD_CORE] Then
         ; ConsoleWrite("Disposing Discord" & @CRLF)
         DllCallAddress("none:cdecl", _
@@ -415,6 +465,94 @@ Func __Discord_Dispose()
 EndFunc
 #endregion Core private functions
 
+#region Achievement manager public functions
+Func _Discord_AchievementManager_OnUserAchievementUpdate($fnHandler)
+    If VarGetType($fnHandler) <> "UserFunction" Then
+        Return False
+    EndIf
+    $__Discord_AchievementManager_afnCallbackHandlers[0] = $fnHandler
+EndFunc
+
+Func _Discord_AchievementManager_SetUserAchievement($iAchievementId, $iPercentComplete, $fnHandler)
+    If VarGetType($fnHandler) <> "UserFunction" Then
+        Return False
+    EndIf
+    If $__Discord_AchievementManager_hSetUserAchievementCallback = 0 Then
+        $__Discord_AchievementManager_hSetUserAchievementCallback = DllCallbackRegister("__Discord_AchievementManager_SetUserAchievementCallbackHandler", "none:cdecl", "ptr;int")
+    EndIf
+    $__Discord_AchievementManager_fnSetUserAchievementCallbackHandler = $fnHandler
+    DllCallAddress("none:cdecl", _
+                   DllStructGetData($__Discord_atMethodInterfaces[$__DISCORD_ACHIEVEMENTMANAGER], "SetUserAchievement"), _
+                   "ptr", $__Discord_apMethodPtrs[$__DISCORD_ACHIEVEMENTMANAGER], _
+                   "int64", $iAchievementId, _
+                   "byte", $iPercentComplete, _
+                   "ptr", Null, _
+                   "ptr", DllCallbackGetPtr($__Discord_AchievementManager_hSetUserAchievementCallback))
+    Return True
+EndFunc
+
+Func _Discord_AchievementManager_FetchUserAchievements($fnHandler)
+    If VarGetType($fnHandler) <> "UserFunction" Then
+        Return False
+    EndIf
+    If $__Discord_AchievementManager_hFetchUserAchievementsCallback = 0 Then
+        $__Discord_AchievementManager_hFetchUserAchievementsCallback = DllCallbackRegister("__Discord_AchievementManager_FetchUserAchievementsCallbackHandler", "none:cdecl", "ptr;int")
+    EndIf
+    $__Discord_AchievementManager_fnFetchUserAchievementsCallbackHandler = $fnHandler
+    DllCallAddress("none:cdecl", _
+                   DllStructGetData($__Discord_atMethodInterfaces[$__DISCORD_ACHIEVEMENTMANAGER], "FetchUserAchievements"), _
+                   "ptr", $__Discord_apMethodPtrs[$__DISCORD_ACHIEVEMENTMANAGER], _
+                   "ptr", Null, _
+                   "ptr", DllCallbackGetPtr($__Discord_AchievementManager_hFetchUserAchievementsCallback))
+    Return True
+EndFunc
+
+Func _Discord_AchievementManager_CountUserAchievements()
+    Local $aResult = DllCallAddress("none:cdecl", _
+                                    DllStructGetData($__Discord_atMethodInterfaces[$__DISCORD_ACHIEVEMENTMANAGER], "CountUserAchievements"), _
+                                    "ptr", $__Discord_apMethodPtrs[$__DISCORD_ACHIEVEMENTMANAGER], _
+                                    "int*", 0)
+    Local $iCount = $aResult[2]
+    Return $iCount
+EndFunc
+
+Func _Discord_AchievementManager_GetUserAchievement($iUserAchievementId)
+    Local $tUserAchievement = DllStructCreate($__DISCORD_tagUSERACHIEVEMENT)
+    Local $aResult = DllCallAddress("int:cdecl", _
+                                    DllStructGetData($__Discord_atMethodInterfaces[$__DISCORD_ACHIEVEMENTMANAGER], "GetUserAchievement"), _
+                                    "ptr", $__Discord_apMethodPtrs[$__DISCORD_ACHIEVEMENTMANAGER], _
+                                    "int64", $iUserAchievementId, _
+                                    "ptr", DllStructGetPtr($tUserAchievement))
+    If $aResult[0] <> $DISCORD_RESULT_OK Then
+        Return SetError($aResult[0], 0, False)
+    EndIf
+    Local $aUserAchievement[4]
+    $aUserAchievement[0] = DllStructGetData($tUserAchievement, "UserId")
+    $aUserAchievement[1] = DllStructGetData($tUserAchievement, "AchievementId")
+    $aUserAchievement[2] = DllStructGetData($tUserAchievement, "PercentComplete")
+    $aUserAchievement[3] = DllStructGetData($tUserAchievement, "UnlockedAt")
+    Return $aUserAchievement
+EndFunc
+
+Func _Discord_AchievementManager_GetUserAchievementAt($iIndex)
+    Local $tUserAchievement = DllStructCreate($__DISCORD_tagUSERACHIEVEMENT)
+    Local $aResult = DllCallAddress("int:cdecl", _
+                                    DllStructGetData($__Discord_atMethodInterfaces[$__DISCORD_ACHIEVEMENTMANAGER], "GetUserAchievementAt"), _
+                                    "ptr", $__Discord_apMethodPtrs[$__DISCORD_ACHIEVEMENTMANAGER], _
+                                    "int", $iIndex, _
+                                    "ptr", DllStructGetPtr($tUserAchievement))
+    If $aResult[0] <> $DISCORD_RESULT_OK Then
+        Return SetError($aResult[0], 0, False)
+    EndIf
+    Local $aUserAchievement[4]
+    $aUserAchievement[0] = DllStructGetData($tUserAchievement, "UserId")
+    $aUserAchievement[1] = DllStructGetData($tUserAchievement, "AchievementId")
+    $aUserAchievement[2] = DllStructGetData($tUserAchievement, "PercentComplete")
+    $aUserAchievement[3] = DllStructGetData($tUserAchievement, "UnlockedAt")
+    Return $aUserAchievement
+EndFunc
+#endregion Achievement manager public functions
+
 #region Achievement manager private functions
 Func __Discord_AchievementManager_Init()
     $__Discord_apMethodPtrs[$__DISCORD_ACHIEVEMENTMANAGER] = DllCallAddress("ptr:cdecl", _
@@ -425,9 +563,40 @@ Func __Discord_AchievementManager_Init()
 EndFunc
 
 Func __Discord_AchievementManager_InitEvents()
+    $__Discord_AchievementManager_afnCallbackHandlers[0] = 0
+    $__Discord_AchievementManager_ahCallbacks[0] = DllCallbackRegister("__Discord_AchievementManager_OnUserAchievementUpdateHandler", "none:cdecl", "ptr;ptr")
+    DllStructSetData($__Discord_atEventInterfaces[$__DISCORD_ACHIEVEMENTMANAGER], "OnUserAchievementUpdate", DllCallbackGetPtr($__Discord_AchievementManager_ahCallbacks[0]))
+EndFunc
+
+; Handler for: void UserAchievementUpdateHandler(IntPtr ptr, ref UserAchievement userAchievement)
+Func __Discord_AchievementManager_OnUserAchievementUpdateHandler($pPtr, $pUserAcheievement)
+    #forceref $pPtr
+    If $__Discord_AchievementManager_afnCallbackHandlers[0] <> 0 Then
+        Local $tUserAchievement = DllStructCreate($__DISCORD_tagUSERACHIEVEMENT, $pUserAcheievement)
+        Local $aUserAchievement[4]
+        $aUserAchievement[0] = DllStructGetData($tUserAchievement, "UserId")
+        $aUserAchievement[1] = DllStructGetData($tUserAchievement, "AchievementId")
+        $aUserAchievement[2] = DllStructGetData($tUserAchievement, "PercentComplete")
+        $aUserAchievement[3] = DllStructGetData($tUserAchievement, "UnlockedAt")
+        $__Discord_AchievementManager_afnCallbackHandlers[0]($aUserAchievement)
+    EndIf
+EndFunc
+
+; Handler for: void SetUserAchievementCallback(IntPtr ptr, Result result)
+Func __Discord_AchievementManager_SetUserAchievementCallbackHandler($pPtr, $iResult)
+    #forceref $pPtr
+    If $__Discord_AchievementManager_fnSetUserAchievementCallbackHandler <> 0 Then
+        $__Discord_AchievementManager_fnSetUserAchievementCallbackHandler($iResult)
+    EndIf
 EndFunc
 
 Func __Discord_AchievementManager_Dispose()
+    For $i = 0 To 0
+        If $__Discord_AchievementManager_ahCallbacks[$i] Then
+            DllCallbackFree($__Discord_AchievementManager_ahCallbacks[$i])
+            $__Discord_AchievementManager_ahCallbacks[$i] = 0
+        EndIf
+    Next
 EndFunc
 #endregion Achievement manager private functions
 
@@ -442,9 +611,9 @@ EndFunc
 ; Return values .: Success            - True
 ;                  Invalid parameters - False
 ; Author ........: Alan72104#4011
-; Modified.......: 
-; Remarks .......: 
-; Related .......: 
+; Modified.......:
+; Remarks .......:
+; Related .......:
 ; Link ..........: https://discord.com/developers/docs/game-sdk/activities#onactivityjoin
 ; ===============================================================================================================================
 Func _Discord_ActivityManager_OnActivityJoin($fnHandler)
@@ -457,7 +626,7 @@ EndFunc
 
 ; #FUNCTION# ====================================================================================================================
 ; Name...........: _Discord_ActivityManager_OnActivitySpectate
-; Description ...: Sets the event handler 
+; Description ...: Sets the event handler
 ; Syntax.........: _Discord_ActivityManager_OnActivitySpectate($fnHandler)
 ; Parameters ....: $fnHandler - [OnActivitySpectateHandler] Fires when a user accepts a spectate chat invite or clicks the
 ;                             +                             Spectate button on a user's profile
@@ -465,9 +634,9 @@ EndFunc
 ; Return values .: Success            - True
 ;                  Invalid parameters - False
 ; Author ........: Alan72104#4011
-; Modified.......: 
-; Remarks .......: 
-; Related .......: 
+; Modified.......:
+; Remarks .......:
+; Related .......:
 ; Link ..........: https://discord.com/developers/docs/game-sdk/activities#onactivityspectate
 ; ===============================================================================================================================
 Func _Discord_ActivityManager_OnActivitySpectate($fnHandler)
@@ -480,15 +649,15 @@ EndFunc
 
 ; #FUNCTION# ====================================================================================================================
 ; Name...........: _Discord_ActivityManager_OnActivityJoinRequest
-; Description ...: Sets the event handler 
+; Description ...: Sets the event handler
 ; Syntax.........: _Discord_ActivityManager_OnActivityJoinRequest($fnHandler)
 ; Parameters ....: $fnHandler - [OnActivityJoinRequestHandler] Fires when a user asks to join the current user's game
 ;                             + void OnActivityJoinRequestHandler(User user)
 ; Return values .: Success            - True
 ;                  Invalid parameters - False
 ; Author ........: Alan72104#4011
-; Modified.......: 
-; Remarks .......: 
+; Modified.......:
+; Remarks .......:
 ; Related .......: User array [Int64 Id, String Username, String Discriminator, String Avatar, Bool Bot]
 ; Link ..........: https://discord.com/developers/docs/game-sdk/activities#onactivityjoinrequest
 ; ===============================================================================================================================
@@ -502,18 +671,18 @@ EndFunc
 
 ; #FUNCTION# ====================================================================================================================
 ; Name...........: _Discord_ActivityManager_OnActivityInvite
-; Description ...: Sets the event handler 
+; Description ...: Sets the event handler
 ; Syntax.........: _Discord_ActivityManager_OnActivityInvite($fnHandler)
 ; Parameters ....: $fnHandler - [OnActivityInviteHandler] Fires when the user receives a join or spectate invite
 ;                             + void OnActivityInviteHandler(ACTIVITYACTIONTYPE type, User user, Activity activity)
 ; Return values .: Success            - True
 ;                  Invalid parameters - False
 ; Author ........: Alan72104#4011
-; Modified.......: 
-; Remarks .......: 
+; Modified.......:
+; Remarks .......:
 ; Related .......: User array [Int64 Id, String Username, String Discriminator, String Avatar, Bool Bot]
 ;                  Activity array [Int Type, Int64 ApplicationId, String Name, String State, String Details,
-;                                  Int64 Timestamps_Start, Int64 Timerstamps_End, String Assets_LargeImage,
+;                                  Int64 Timestamps_Start, Int64 Timestamps_End, String Assets_LargeImage,
 ;                                  String Assets_LargeText, String Assets_SmallImage, String Assets_SmallText, String Party_Id,
 ;                                  Int Party_Size_CurrentSize, Int Party_Size_MaxSize, String Secrets_Match, String Secrets_Join,
 ;                                  String Secrets_Spectate, Bool Instance]
@@ -535,7 +704,7 @@ EndFunc
 ; Return values .: Success - True
 ;                  Failure - False with @error = Discord result
 ; Author ........: Alan72104#4011
-; Modified.......: 
+; Modified.......:
 ; Remarks .......: This might be a custom protocol, like "my-awesome-game://", or a path to an executable
 ;                  It also supports any launch parameters that may be needed, like "game.exe --full-screen --no-hax"
 ; Related .......: $DISCORD_RESULT...
@@ -561,8 +730,8 @@ EndFunc
 ; Return values .: Success - True
 ;                  Failure - False with @error = Discord result
 ; Author ........: Alan72104#4011
-; Modified.......: 
-; Remarks .......: 
+; Modified.......:
+; Remarks .......:
 ; Related .......: $DISCORD_RESULT...
 ; Link ..........: https://discord.com/developers/docs/game-sdk/activities#registersteam
 ; ===============================================================================================================================
@@ -578,6 +747,51 @@ Func _Discord_ActivityManager_RegisterSteam($iSteamId)
 EndFunc
 
 ; #FUNCTION# ====================================================================================================================
+; Name...........: _Discord_ActivityManager_MakeActivitySimple
+; Description ...: Makes an activity array with only arguments needed for rich presense
+; Syntax.........: _Discord_ActivityManager_MakeActivitySimple($sState = 0,
+;                                                              $sDetails = 0,
+;                                                              $iTimestamps_Start = 0,
+;                                                              $iTimestamps_End = 0,
+;                                                              $sAssets_LargeImage = 0,
+;                                                              $sAssets_LargeText = 0,
+;                                                              $sAssets_SmallImage = 0,
+;                                                              $sAssets_SmallText = 0)
+; Parameters ....: ok
+; Return values .: An activity array consists of 18 elements
+; Author ........: Alan72104#4011
+; Modified.......: 
+; Remarks .......: All string parameters have a max length of 128 chars, and time is expressed in UTC Unix time (seconds elapsed
+;                  since 1970)
+; Related .......: 
+; Link ..........: https://discord.com/developers/docs/game-sdk/activities#data-models
+; ===============================================================================================================================
+Func _Discord_ActivityManager_MakeActivitySimple($sState = 0, $sDetails = 0, $iTimestamps_Start = 0, $iTimestamps_End = 0, _
+                                                 $sAssets_LargeImage = 0, $sAssets_LargeText = 0, $sAssets_SmallImage = 0, _
+                                                 $sAssets_SmallText = 0)
+    Local $aActivity[18]
+    $aActivity[0] = 0
+    $aActivity[1] = 0
+    $aActivity[2] = ""
+    $aActivity[3]  = (Not ($sState == 0)) ? String($sState) : ""
+    $aActivity[4]  = (Not ($sDetails == 0)) ? String($sDetails) : ""
+    $aActivity[5]  = (Not ($iTimestamps_Start == 0)) ? Int($iTimestamps_Start) : 0
+    $aActivity[6]  = (Not ($iTimestamps_End == 0)) ? Int($iTimestamps_End) : 0
+    $aActivity[7]  = (Not ($sAssets_LargeImage == 0)) ? String($sAssets_LargeImage) : ""
+    $aActivity[8]  = (Not ($sAssets_LargeText == 0)) ? String($sAssets_LargeText) : ""
+    $aActivity[9]  = (Not ($sAssets_SmallImage == 0)) ? String($sAssets_SmallImage) : ""
+    $aActivity[10] = (Not ($sAssets_SmallText == 0)) ? String($sAssets_SmallText) : ""
+    $aActivity[11] = ""
+    $aActivity[12] = 0
+    $aActivity[13] = 0
+    $aActivity[14] = ""
+    $aActivity[15] = ""
+    $aActivity[16] = ""
+    $aActivity[17] = False
+    Return $aActivity
+EndFunc
+
+; #FUNCTION# ====================================================================================================================
 ; Name...........: _Discord_ActivityManager_UpdateActivity
 ; Description ...: Sets a user's presence in Discord to a new activity, this has a rate limit of 5 updates per 20 seconds
 ; Syntax.........: _Discord_ActivityManager_UpdateActivity($aActivity, $fnHandler)
@@ -587,10 +801,10 @@ EndFunc
 ; Return values .: Success            - True
 ;                  Invalid parameters - False
 ; Author ........: Alan72104#4011
-; Modified.......: 
-; Remarks .......: 
+; Modified.......:
+; Remarks .......:
 ; Related .......: Activity array [Int Type, Int64 ApplicationId, String Name, String State, String Details,
-;                                  Int64 Timestamps_Start, Int64 Timerstamps_End, String Assets_LargeImage,
+;                                  Int64 Timestamps_Start, Int64 Timestamps_End, String Assets_LargeImage,
 ;                                  String Assets_LargeText, String Assets_SmallImage, String Assets_SmallText, String Party_Id,
 ;                                  Int Party_Size_CurrentSize, Int Party_Size_MaxSize, String Secrets_Match, String Secrets_Join,
 ;                                  String Secrets_Spectate, Bool Instance]
@@ -609,14 +823,14 @@ Func _Discord_ActivityManager_UpdateActivity($aActivity, $fnHandler)
     EndIf
     $__Discord_ActivityManager_fnUpdateActivityCallbackHandler = $fnHandler
     Local $tActivity = DllStructCreate($__DISCORD_tagACTIVITY)
-    ; ActivityType is strictly for the purpose of handling events that you receive from Discord; though the SDK/our API will not reject a payload with an ActivityType sent, it will be discarded and will not change anything in the client.
+    ; Readonly fields
     ; DllStructSetData($tActivity, "Type", $aActivity[0])
-    DllStructSetData($tActivity, "ApplicationId", $aActivity[1])
-    DllStructSetData($tActivity, "Name", $aActivity[2])
+    ; DllStructSetData($tActivity, "ApplicationId", $aActivity[1])
+    ; DllStructSetData($tActivity, "Name", $aActivity[2])
     DllStructSetData($tActivity, "State", $aActivity[3])
     DllStructSetData($tActivity, "Details", $aActivity[4])
     DllStructSetData($tActivity, "Timestamps_Start", $aActivity[5])
-    DllStructSetData($tActivity, "Timerstamps_End", $aActivity[6])
+    DllStructSetData($tActivity, "Timestamps_End", $aActivity[6])
     DllStructSetData($tActivity, "Assets_LargeImage", $aActivity[7])
     DllStructSetData($tActivity, "Assets_LargeText", $aActivity[8])
     DllStructSetData($tActivity, "Assets_SmallImage", $aActivity[9])
@@ -646,8 +860,8 @@ EndFunc
 ; Return values .: Success            - True
 ;                  Invalid parameters - False
 ; Author ........: Alan72104#4011
-; Modified.......: 
-; Remarks .......: 
+; Modified.......:
+; Remarks .......:
 ; Related .......: $DISCORD_RESULT...
 ; Link ..........: https://discord.com/developers/docs/game-sdk/activities#clearactivity
 ; ===============================================================================================================================
@@ -678,8 +892,8 @@ EndFunc
 ; Return values .: Success            - True
 ;                  Invalid parameters - False
 ; Author ........: Alan72104#4011
-; Modified.......: 
-; Remarks .......: 
+; Modified.......:
+; Remarks .......:
 ; Related .......: $DISCORD_ACTIVITYJOINREQUESTREPLY..., $DISCORD_RESULT...
 ; Link ..........: https://discord.com/developers/docs/game-sdk/activities#sendrequestreply
 ; ===============================================================================================================================
@@ -713,7 +927,7 @@ EndFunc
 ; Return values .: Success            - True
 ;                  Invalid parameters - False
 ; Author ........: Alan72104#4011
-; Modified.......: 
+; Modified.......:
 ; Remarks .......: If you do not have a valid activity with all the required fields, this call will error
 ;                  See Activity Action Field Requirements for the fields required to have join and spectate invites function
 ;                  properly
@@ -749,8 +963,8 @@ EndFunc
 ; Return values .: Success            - True
 ;                  Invalid parameters - False
 ; Author ........: Alan72104#4011
-; Modified.......: 
-; Remarks .......: 
+; Modified.......:
+; Remarks .......:
 ; Related .......: $DISCORD_RESULT...
 ; Link ..........: https://discord.com/developers/docs/game-sdk/activities#acceptinvite
 ; ===============================================================================================================================
@@ -843,7 +1057,7 @@ Func __Discord_ActivityManager_OnActivityInviteHandler($pPtr, $iType, $pUser, $p
                             DllStructGetData($tActivity, "State"), _
                             DllStructGetData($tActivity, "Details"), _
                             DllStructGetData($tActivity, "Timestamps_Start"), _
-                            DllStructGetData($tActivity, "Timerstamps_End"), _
+                            DllStructGetData($tActivity, "Timestamps_End"), _
                             DllStructGetData($tActivity, "Assets_LargeImage"), _
                             DllStructGetData($tActivity, "Assets_LargeText"), _
                             DllStructGetData($tActivity, "Assets_SmallImage"), _
@@ -937,9 +1151,9 @@ EndFunc
 ; Parameters ....: None
 ; Return values .: The string
 ; Author ........: Alan72104#4011
-; Modified.......: 
-; Remarks .......: 
-; Related .......: 
+; Modified.......:
+; Remarks .......:
+; Related .......:
 ; Link ..........: https://discord.com/developers/docs/game-sdk/applications#getcurrentlocale
 ; ===============================================================================================================================
 Func _Discord_ApplicationManager_GetCurrentLocale()
@@ -959,9 +1173,9 @@ EndFunc
 ; Parameters ....: None
 ; Return values .: The string
 ; Author ........: Alan72104#4011
-; Modified.......: 
-; Remarks .......: 
-; Related .......: 
+; Modified.......:
+; Remarks .......:
+; Related .......:
 ; Link ..........: https://discord.com/developers/docs/game-sdk/applications#getcurrentbranch
 ; ===============================================================================================================================
 Func _Discord_ApplicationManager_GetCurrentBranch()
@@ -982,9 +1196,9 @@ EndFunc
 ; Return values .: Success            - True
 ;                  Invalid parameters - False
 ; Author ........: Alan72104#4011
-; Modified.......: 
-; Remarks .......: 
-; Related .......: 
+; Modified.......:
+; Remarks .......:
+; Related .......:
 ; Link ..........: https://discord.com/developers/docs/game-sdk/applications#validateorexit
 ; ===============================================================================================================================
 Func _Discord_ApplicationManager_ValidateOrExit($fnHandler)
@@ -1012,7 +1226,7 @@ EndFunc
 ; Return values .: Success            - True
 ;                  Invalid parameters - False
 ; Author ........: Alan72104#4011
-; Modified.......: 
+; Modified.......:
 ; Remarks .......: If your game was launched from Discord and you call this function, you will automatically receive the token
 ;                  If the game was not launched from Discord and this method is called,
 ;                  Discord will focus itself and prompt the user for authorization
@@ -1025,7 +1239,7 @@ Func _Discord_ApplicationManager_GetOAuth2Token($fnHandler)
         Return False
     EndIf
     If $__Discord_ApplicationManager_hGetOAuth2TokenCallback = 0 Then
-        $__Discord_ApplicationManager_hGetOAuth2TokenCallback = DllCallbackRegister("__Discord_ApplicationManager_GetOAuth2TokenHandler", "none", "ptr;int;ptr")
+        $__Discord_ApplicationManager_hGetOAuth2TokenCallback = DllCallbackRegister("__Discord_ApplicationManager_GetOAuth2TokenCallbackHandler", "none", "ptr;int;ptr")
     EndIf
     $__Discord_ApplicationManager_fnGetOAuth2TokenCallbackHandler = $fnHandler
     DllCallAddress("none:cdecl", _
@@ -1045,7 +1259,7 @@ EndFunc
 ; Return values .: Success            - True
 ;                  Invalid parameters - False
 ; Author ........: Alan72104#4011
-; Modified.......: 
+; Modified.......:
 ; Remarks .......: Please see the official documentation https://discord.com/developers/docs/game-sdk/applications#getticket
 ; Related .......: $DISCORD_RESULT...
 ; Link ..........: https://discord.com/developers/docs/game-sdk/applications#getticket
@@ -1068,6 +1282,17 @@ EndFunc
 #endregion Application manager public functions
 
 #region Application manager private functions
+Func __Discord_ApplicationManager_Init()
+    $__Discord_apMethodPtrs[$__DISCORD_APPLICATIONMANAGER] = DllCallAddress("ptr:cdecl", _
+                                                                            DllStructGetData($__Discord_atMethodInterfaces[$__DISCORD_CORE], "GetApplicationManager"), _
+                                                                            "ptr", $__Discord_apMethodPtrs[$__DISCORD_CORE])[0]
+    $__Discord_atMethodInterfaces[$__DISCORD_APPLICATIONMANAGER] = DllStructCreate($__DISCORD_tagAPPLICATIONMANAGERMETHODS, $__Discord_apMethodPtrs[$__DISCORD_APPLICATIONMANAGER])
+    __Discord_ApplicationManager_InitEvents()
+EndFunc
+
+Func __Discord_ApplicationManager_InitEvents()
+EndFunc
+
 ; Handler for: void GetTicketCallback(IntPtr ptr, Result result, [MarshalAs(UnmanagedType.LPStr)]ref string data);
 Func __Discord_ApplicationManager_GetTicketCallbackHandler($pPtr, $iResult, $sData)
     #forceref $pPtr
@@ -1085,7 +1310,7 @@ Func __Discord_ApplicationManager_ValidateOrExitCallbackHandler($pPtr, $iResult)
 EndFunc
 
 ; Handler for: void GetOAuth2TokenCallback(IntPtr ptr, Result result, {string accessToken, string scopes, Int64 expires})
-Func __Discord_ApplicationManager_GetOAuth2TokenHandler($pPtr, $iResult, $pOAuth2Token)
+Func __Discord_ApplicationManager_GetOAuth2TokenCallbackHandler($pPtr, $iResult, $pOAuth2Token)
     #forceref $pPtr
     If $__Discord_ApplicationManager_fnGetOAuth2TokenCallbackHandler <> 0 Then
         Local $tOAuth2Token = DllStructCreate($__DISCORD_tagOAUTH2TOKEN, $pOAuth2Token)
@@ -1094,17 +1319,6 @@ Func __Discord_ApplicationManager_GetOAuth2TokenHandler($pPtr, $iResult, $pOAuth
                                DllStructGetData($tOAuth2Token, "Expires")]
         $__Discord_ApplicationManager_fnGetOAuth2TokenCallbackHandler($iResult, $aOAuth2Token)
     EndIf
-EndFunc
-
-Func __Discord_ApplicationManager_Init()
-    $__Discord_apMethodPtrs[$__DISCORD_APPLICATIONMANAGER] = DllCallAddress("ptr:cdecl", _
-                                                                            DllStructGetData($__Discord_atMethodInterfaces[$__DISCORD_CORE], "GetApplicationManager"), _
-                                                                            "ptr", $__Discord_apMethodPtrs[$__DISCORD_CORE])[0]
-    $__Discord_atMethodInterfaces[$__DISCORD_APPLICATIONMANAGER] = DllStructCreate($__DISCORD_tagAPPLICATIONMANAGERMETHODS, $__Discord_apMethodPtrs[$__DISCORD_APPLICATIONMANAGER])
-    __Discord_ApplicationManager_InitEvents()
-EndFunc
-
-Func __Discord_ApplicationManager_InitEvents()
 EndFunc
 
 Func __Discord_ApplicationManager_Dispose()
@@ -1123,6 +1337,88 @@ Func __Discord_ApplicationManager_Dispose()
 EndFunc
 #endregion Application manager private functions
 
+#region Image manager public functions
+Func _Discord_ImageManager_MakeHandle($iType, $iId, $iSize)
+    Local $aHandle[3]
+    $aHandle[0] = $iType
+    $aHandle[1] = $iId
+    $aHandle[2] = $iSize
+    Return $aHandle
+EndFunc
+
+Func _Discord_ImageManager_Fetch($aHandle, $bRefresh, $fnHandler)
+    If VarGetType($fnHandler) <> "UserFunction" Then
+        Return False
+    EndIf
+    If UBound($aHandle) <> 3 Then
+        Return False
+    EndIf
+    If $__Discord_ImageManager_hFetchCallback = 0 Then
+        $__Discord_ImageManager_hFetchCallback = DllCallbackRegister("__Discord_ImageManager_FetchCallbackHandler", "none:cdecl", "ptr;int;ptr")
+    EndIf
+    $__Discord_ImageManager_fnFetchCallbackHandler = $fnHandler
+    Local $tHandle = DllStructCreate($__DISCORD_tagIMAGEHANDLE)
+    DllStructSetData($tHandle, "Type", $aHandle[0])
+    DllStructSetData($tHandle, "Id", $aHandle[1])
+    DllStructSetData($tHandle, "Size", $aHandle[2])
+    DllCallAddress("none:cdecl", _
+                   DllStructGetData($__Discord_atMethodInterfaces[$__DISCORD_IMAGEMANAGER], "Fetch"), _
+                   "ptr", $__Discord_apMethodPtrs[$__DISCORD_IMAGEMANAGER], _
+                   "ptr", DllStructGetPtr($tHandle), _
+                   "boolean", $bRefresh, _
+                   "ptr", Null, _
+                   "ptr", DllCallbackGetPtr($__Discord_ImageManager_hFetchCallback))
+    Return True
+EndFunc
+
+Func _Discord_ImageManager_GetDimensions($aHandle)
+    If UBound($aHandle) <> 3 Then
+        Return False
+    EndIf
+    Local $tHandle = DllStructCreate($__DISCORD_tagIMAGEHANDLE)
+    DllStructSetData($tHandle, "Type", $aHandle[0])
+    DllStructSetData($tHandle, "Id", $aHandle[1])
+    DllStructSetData($tHandle, "Size", $aHandle[2])
+    Local $tDimensions = DllStructCreate($__DISCORD_tagIMAGEDIMENSIONS)
+    Local $aResult = DllCallAddress("int:cdecl", _
+                                    DllStructGetData($__Discord_atMethodInterfaces[$__DISCORD_IMAGEMANAGER], "GetDimensions"), _
+                                    "ptr", $__Discord_apMethodPtrs[$__DISCORD_IMAGEMANAGER], _
+                                    "ptr", DllStructGetPtr($tHandle), _
+                                    "ptr", DllStructGetPtr($tDimensions))
+    If $aResult[0] <> $DISCORD_RESULT_OK Then
+        Return SetError($aResult[0], 0, False)
+    EndIf
+    Local $aDimensions[2]
+    $aDimensions[0] = DllStructGetData($tDimensions, "Width")
+    $aDimensions[1] = DllStructGetData($tDimensions, "Height")
+    Return $aDimensions
+EndFunc
+
+Func _Discord_ImageManager_GetData($aHandle)
+    If UBound($aHandle) <> 3 Then
+        Return False
+    EndIf
+    Local $aDimensions = _Discord_ImageManager_GetDimensions($aHandle)
+    Local $iLen = $aDimensions[0] * $aDimensions[1] * 4
+    Local $tHandle = DllStructCreate($__DISCORD_tagIMAGEHANDLE)
+    DllStructSetData($tHandle, "Type", $aHandle[0])
+    DllStructSetData($tHandle, "Id", $aHandle[1])
+    DllStructSetData($tHandle, "Size", $aHandle[2])
+    Local $tData = DllStructCreate("byte[" & $iLen & "]")
+    Local $aResult = DllCallAddress("int:cdecl", _
+                                    DllStructGetData($__Discord_atMethodInterfaces[$__DISCORD_IMAGEMANAGER], "GetData"), _
+                                    "ptr", $__Discord_apMethodPtrs[$__DISCORD_IMAGEMANAGER], _
+                                    "ptr", DllStructGetPtr($tHandle), _
+                                    "ptr", DllStructGetPtr($tData), _
+                                    "int", $iLen)
+    If $aResult[0] <> $DISCORD_RESULT_OK Then
+        Return SetError($aResult[0], 0, False)
+    EndIf
+    Local $sData = DllStructGetData($tData, 1)
+    Return $sData
+EndFunc
+#endregion Image manager public functions
+
 #region Image manager private functions
 Func __Discord_ImageManager_Init()
     $__Discord_apMethodPtrs[$__DISCORD_IMAGEMANAGER] = DllCallAddress("ptr:cdecl", _
@@ -1135,10 +1431,27 @@ EndFunc
 Func __Discord_ImageManager_InitEvents()
 EndFunc
 
+Func __Discord_ImageManager_FetchCallbackHandler($pPtr, $iResult, $pHandleResult)
+    #forceref $pPtr
+    If $__Discord_ImageManager_fnFetchCallbackHandler <> 0 Then
+        Local $tHandleResult = DllStructCreate($__DISCORD_tagIMAGEHANDLE, $pHandleResult)
+        Local $aHandleResult[3]
+        $aHandleResult[0] = DllStructGetData($tHandleResult, "Type")
+        $aHandleResult[1] = DllStructGetData($tHandleResult, "Id")
+        $aHandleResult[2] = DllStructGetData($tHandleResult, "Size")
+        $__Discord_ImageManager_fnFetchCallbackHandler($iResult, $aHandleResult)
+    EndIf
+EndFunc
+
 Func __Discord_ImageManager_Dispose()
+    If $__Discord_ImageManager_hFetchCallback Then
+        DllCallbackFree($__Discord_ImageManager_hFetchCallback)
+        $__Discord_ImageManager_hFetchCallback = 0
+    EndIf
 EndFunc
 #endregion Image manager private functions
 
+; Unimplemented
 #region Lobby manager private functions
 Func __Discord_LobbyManager_Init()
     $__Discord_apMethodPtrs[$__DISCORD_LOBBYMANAGER] = DllCallAddress("ptr:cdecl", _
@@ -1155,6 +1468,117 @@ Func __Discord_LobbyManager_Dispose()
 EndFunc
 #endregion Lobby manager private functions
 
+#region Network manager public functions
+Func _Discord_NetworkManager_OnMessage($fnHandler)
+    If VarGetType($fnHandler) <> "UserFunction" Then
+        Return False
+    EndIf
+    $__Discord_NetworkManager_afnCallbackHandlers[0] = $fnHandler
+    Return True
+EndFunc
+
+Func _Discord_NetworkManager_OnRouteUpdate($fnHandler)
+    If VarGetType($fnHandler) <> "UserFunction" Then
+        Return False
+    EndIf
+    $__Discord_NetworkManager_afnCallbackHandlers[1] = $fnHandler
+    Return True
+EndFunc
+
+Func _Discord_NetworkManager_GetPeerId()
+    Local $aResult = DllCallAddress("none:cdecl", _
+                                    DllStructGetData($__Discord_atMethodInterfaces[$__DISCORD_NETWORKMANAGER], "GetPeerId"), _
+                                    "ptr", $__Discord_apMethodPtrs[$__DISCORD_NETWORKMANAGER], _
+                                    "uint64*", 0)
+    Local $iPeerId = $aResult[2]
+    Return $iPeerId
+EndFunc
+
+Func _Discord_NetworkManager_Flush()
+    Local $aResult = DllCallAddress("int:cdecl", _
+                                    DllStructGetData($__Discord_atMethodInterfaces[$__DISCORD_NETWORKMANAGER], "Flush"), _
+                                    "ptr", $__Discord_apMethodPtrs[$__DISCORD_NETWORKMANAGER])
+    If $aResult[0] <> $DISCORD_RESULT_OK Then
+        Return SetError($aResult[0], 0, False)
+    EndIf
+    Return True
+EndFunc
+
+Func _Discord_NetworkManager_OpenPeer($iPeerId, $sRouteData)
+    Local $aResult = DllCallAddress("int:cdecl", _
+                                    DllStructGetData($__Discord_atMethodInterfaces[$__DISCORD_NETWORKMANAGER], "OpenPeer"), _
+                                    "ptr", $__Discord_apMethodPtrs[$__DISCORD_NETWORKMANAGER], _
+                                    "uint64", $iPeerId, _
+                                    "str", $sRouteData)
+    If $aResult[0] <> $DISCORD_RESULT_OK Then
+        Return SetError($aResult[0], 0, False)
+    EndIf
+    Return True
+EndFunc
+
+Func _Discord_NetworkManager_UpdatePeer($iPeerId, $sRouteData)
+    Local $aResult = DllCallAddress("int:cdecl", _
+                                    DllStructGetData($__Discord_atMethodInterfaces[$__DISCORD_NETWORKMANAGER], "UpdatePeer"), _
+                                    "ptr", $__Discord_apMethodPtrs[$__DISCORD_NETWORKMANAGER], _
+                                    "uint64", $iPeerId, _
+                                    "str", $sRouteData)
+    If $aResult[0] <> $DISCORD_RESULT_OK Then
+        Return SetError($aResult[0], 0, False)
+    EndIf
+    Return True
+EndFunc
+
+Func _Discord_NetworkManager_ClosePeer($iPeerId)
+    Local $aResult = DllCallAddress("int:cdecl", _
+                                    DllStructGetData($__Discord_atMethodInterfaces[$__DISCORD_NETWORKMANAGER], "ClosePeer"), _
+                                    "ptr", $__Discord_apMethodPtrs[$__DISCORD_NETWORKMANAGER], _
+                                    "uint64", $iPeerId)
+    If $aResult[0] <> $DISCORD_RESULT_OK Then
+        Return SetError($aResult[0], 0, False)
+    EndIf
+    Return True
+EndFunc
+
+Func _Discord_NetworkManager_OpenChannel($iPeerId, $iChannelId, $bReliable)
+    Local $aResult = DllCallAddress("int:cdecl", _
+                                    DllStructGetData($__Discord_atMethodInterfaces[$__DISCORD_NETWORKMANAGER], "OpenChannel"), _
+                                    "ptr", $__Discord_apMethodPtrs[$__DISCORD_NETWORKMANAGER], _
+                                    "uint64", $iPeerId, _
+                                    "byte", $iChannelId, _
+                                    "boolean", $bReliable)
+    If $aResult[0] <> $DISCORD_RESULT_OK Then
+        Return SetError($aResult[0], 0, False)
+    EndIf
+    Return True
+EndFunc
+
+Func _Discord_NetworkManager_CloseChannel($iPeerId, $iChannelId)
+    Local $aResult = DllCallAddress("int:cdecl", _
+                                    DllStructGetData($__Discord_atMethodInterfaces[$__DISCORD_NETWORKMANAGER], "CloseChannel"), _
+                                    "ptr", $__Discord_apMethodPtrs[$__DISCORD_NETWORKMANAGER], _
+                                    "uint64", $iPeerId, _
+                                    "byte", $iChannelId)
+    If $aResult[0] <> $DISCORD_RESULT_OK Then
+        Return SetError($aResult[0], 0, False)
+    EndIf
+    Return True
+EndFunc
+
+Func _Discord_NetworkManager_SendMessage($iPeerId, $iChannelId, $sData)
+    Local $aResult = DllCallAddress("int:cdecl", _
+                                    DllStructGetData($__Discord_atMethodInterfaces[$__DISCORD_NETWORKMANAGER], "SendMessage"), _
+                                    "ptr", $__Discord_apMethodPtrs[$__DISCORD_NETWORKMANAGER], _
+                                    "uint64", $iPeerId, _
+                                    "byte", $iChannelId, _
+                                    "str", $sData, _  ; Original type is byte[]
+                                    "int", StringLen($sData))
+    If $aResult[0] <> $DISCORD_RESULT_OK Then
+        Return SetError($aResult[0], 0, False)
+    EndIf
+    Return True
+EndFunc
+#endregion Network manager public functions
+
 #region Network manager private functions
 Func __Discord_NetworkManager_Init()
     $__Discord_apMethodPtrs[$__DISCORD_NETWORKMANAGER] = DllCallAddress("ptr:cdecl", _
@@ -1165,11 +1589,126 @@ Func __Discord_NetworkManager_Init()
 EndFunc
 
 Func __Discord_NetworkManager_InitEvents()
+    $__Discord_NetworkManager_afnCallbackHandlers[0] = 0
+    $__Discord_NetworkManager_ahCallbacks[0] = DllCallbackRegister("__Discord_NetworkManager_OnMessageHandler", "none:cdecl", "ptr;uint64;byte;ptr;int")
+    DllStructSetData($__Discord_atEventInterfaces[$__DISCORD_NETWORKMANAGER], "OnMessage", DllCallbackGetPtr($__Discord_NetworkManager_ahCallbacks[0]))
+    $__Discord_NetworkManager_afnCallbackHandlers[1] = 0
+    $__Discord_NetworkManager_ahCallbacks[1] = DllCallbackRegister("__Discord_NetworkManager_OnRouteUpdateHandler", "none:cdecl", "ptr;str")
+    DllStructSetData($__Discord_atEventInterfaces[$__DISCORD_NETWORKMANAGER], "OnRouteUpdate", DllCallbackGetPtr($__Discord_NetworkManager_ahCallbacks[1]))
+EndFunc
+
+; Handler for: void MessageHandler(IntPtr ptr, UInt64 peerId, byte channelId, IntPtr dataPtr, Int32 dataLen)
+Func __Discord_NetworkManager_OnMessageHandler($pPtr, $iPeerId, $iChannelId, $pDataPtr, $iDataLen)
+    #forceref $pPtr
+    If $__Discord_NetworkManager_afnCallbackHandlers[0] <> 0 Then
+        $__Discord_NetworkManager_afnCallbackHandlers[0]($iPeerId, $iChannelId, $pDataPtr, $iDataLen)
+    EndIf
+EndFunc
+
+; Handler for: void RouteUpdateHandler(IntPtr ptr, [MarshalAs(UnmanagedType.LPStr)]string routeData)
+Func __Discord_NetworkManager_OnRouteUpdateHandler($pPtr, $sRouteData)
+    #forceref $pPtr
+    If $__Discord_NetworkManager_afnCallbackHandlers[1] <> 0 Then
+        $__Discord_NetworkManager_afnCallbackHandlers[1]($sRouteData)
+    EndIf
 EndFunc
 
 Func __Discord_NetworkManager_Dispose()
+    For $i = 0 To 1
+        If $__Discord_NetworkManager_ahCallbacks[$i] Then
+            DllCallbackFree($__Discord_NetworkManager_ahCallbacks[$i])
+            $__Discord_NetworkManager_ahCallbacks[$i] = 0
+        EndIf
+    Next
 EndFunc
 #endregion Network manager private functions
+
+#region Overlay manager public functions
+Func _Discord_OverlayManager_IsEnabled()
+    Local $aResult = DllCallAddress("none:cdecl", _
+                                    DllStructGetData($__Discord_atMethodInterfaces[$__DISCORD_OVERLAYMANAGER], "IsEnabled"), _
+                                    "ptr", $__Discord_apMethodPtrs[$__DISCORD_OVERLAYMANAGER], _
+                                    "boolean*", False)
+    Local $bEnabled = $aResult[2]
+    Return $bEnabled
+EndFunc
+
+Func _Discord_OverlayManager_IsLocked()
+    Local $aResult = DllCallAddress("none:cdecl", _
+                                    DllStructGetData($__Discord_atMethodInterfaces[$__DISCORD_OVERLAYMANAGER], "IsLocked"), _
+                                    "ptr", $__Discord_apMethodPtrs[$__DISCORD_OVERLAYMANAGER], _
+                                    "boolean*", False)
+    Local $bLocked = $aResult[2]
+    Return $bLocked
+EndFunc
+
+Func _Discord_OverlayManager_SetLocked($bLocked, $fnHandler)
+    If VarGetType($fnHandler) <> "UserFunction" Then
+        Return False
+    EndIf
+    If $__Discord_OverlayManager_hSetLockedCallback = 0 Then
+        $__Discord_OverlayManager_hSetLockedCallback = DllCallbackRegister("__Discord_OverlayManager_SetLockedCallbackHandler", "none:cdecl", "ptr;int")
+    EndIf
+    $__Discord_OverlayManager_fnSetLockedCallbackHandler = $fnHandler
+    DllCallAddress("none:cdecl", _
+                   DllStructGetData($__Discord_atMethodInterfaces[$__DISCORD_OVERLAYMANAGER], "SetLocked"), _
+                   "ptr", $__Discord_apMethodPtrs[$__DISCORD_OVERLAYMANAGER], _
+                   "boolean", $bLocked, _
+                   "ptr", Null, _
+                   "ptr", DllCallbackGetPtr($__Discord_OverlayManager_hSetLockedCallback))
+    Return True
+EndFunc
+
+Func _Discord_OverlayManager_OpenActivityInvite($iType, $fnHandler)
+    If VarGetType($fnHandler) <> "UserFunction" Then
+        Return False
+    EndIf
+    If $__Discord_OverlayManager_hOpenActivityInviteCallback = 0 Then
+        $__Discord_OverlayManager_hOpenActivityInviteCallback = DllCallbackRegister("__Discord_OverlayManager_OpenActivityInviteCallbackHandler", "none:cdecl", "ptr;int")
+    EndIf
+    $__Discord_OverlayManager_fnOpenActivityInviteCallbackHandler = $fnHandler
+    DllCallAddress("none:cdecl", _
+                   DllStructGetData($__Discord_atMethodInterfaces[$__DISCORD_OVERLAYMANAGER], "OpenActivityInvite"), _
+                   "ptr", $__Discord_apMethodPtrs[$__DISCORD_OVERLAYMANAGER], _
+                   "int", $iType, _
+                   "ptr", Null, _
+                   "ptr", DllCallbackGetPtr($__Discord_OverlayManager_hOpenActivityInviteCallback))
+    Return True
+EndFunc
+
+Func _Discord_OverlayManager_OpenGuildInvite($sCode, $fnHandler)
+    If VarGetType($fnHandler) <> "UserFunction" Then
+        Return False
+    EndIf
+    If $__Discord_OverlayManager_hOpenGuildInviteCallback = 0 Then
+        $__Discord_OverlayManager_hOpenGuildInviteCallback = DllCallbackRegister("__Discord_OverlayManager_OpenGuildInviteCallbackHandler", "none:cdecl", "ptr;int")
+    EndIf
+    $__Discord_OverlayManager_fnOpenGuildInviteCallbackHandler = $fnHandler
+    DllCallAddress("none:cdecl", _
+                   DllStructGetData($__Discord_atMethodInterfaces[$__DISCORD_OVERLAYMANAGER], "OpenGuildInvite"), _
+                   "ptr", $__Discord_apMethodPtrs[$__DISCORD_OVERLAYMANAGER], _
+                   "str", $sCode, _
+                   "ptr", Null, _
+                   "ptr", DllCallbackGetPtr($__Discord_OverlayManager_hOpenGuildInviteCallback))
+    Return True
+EndFunc
+
+Func _Discord_OverlayManager_OpenVoiceSettings($fnHandler)
+    If VarGetType($fnHandler) <> "UserFunction" Then
+        Return False
+    EndIf
+    If $__Discord_OverlayManager_hOpenVoiceSettingsCallback = 0 Then
+        $__Discord_OverlayManager_hOpenVoiceSettingsCallback = DllCallbackRegister("__Discord_OverlayManager_OpenVoiceSettingsCallbackHandler", "none:cdecl", "ptr;int")
+    EndIf
+    $__Discord_OverlayManager_fnOpenVoiceSettingsCallbackHandler = $fnHandler
+    DllCallAddress("none:cdecl", _
+                   DllStructGetData($__Discord_atMethodInterfaces[$__DISCORD_OVERLAYMANAGER], "OpenVoiceSettings"), _
+                   "ptr", $__Discord_apMethodPtrs[$__DISCORD_OVERLAYMANAGER], _
+                   "ptr", Null, _
+                   "ptr", DllCallbackGetPtr($__Discord_OverlayManager_hOpenVoiceSettingsCallback))
+    Return True
+EndFunc
+#endregion Overlay manager public functions
 
 #region Overlay manager private functions
 Func __Discord_OverlayManager_Init()
@@ -1181,12 +1720,78 @@ Func __Discord_OverlayManager_Init()
 EndFunc
 
 Func __Discord_OverlayManager_InitEvents()
+    $__Discord_OverlayManager_afnCallbackHandlers[0] = 0
+    $__Discord_OverlayManager_ahCallbacks[0] = DllCallbackRegister("__Discord_OverlayManager_OnToggleHandler", "none:cdecl", "ptr;boolean")
+    DllStructSetData($__Discord_atEventInterfaces[$__DISCORD_NETWORKMANAGER], "OnToggle", DllCallbackGetPtr($__Discord_OverlayManager_ahCallbacks[0]))
+EndFunc
+
+; Handler for: void ToggleHandler(IntPtr ptr, bool locked)
+Func __Discord_OverlayManager_OnToggleHandler($pPtr, $bLocked)
+    #forceref $pPtr
+    If $__Discord_OverlayManager_afnCallbackHandlers[0] <> 0 Then
+        $__Discord_OverlayManager_afnCallbackHandlers[0]($bLocked)
+    EndIf
+EndFunc
+
+; Handler for: void SetLockedCallback(IntPtr ptr, Result result)
+Func __Discord_OverlayManager_SetLockedCallbackHandler($pPtr, $iResult)
+    #forceref $pPtr
+    If $__Discord_OverlayManager_fnSetLockedCallbackHandler <> 0 Then
+        $__Discord_OverlayManager_fnSetLockedCallbackHandler($iResult)
+    EndIf
+EndFunc
+
+; Handler for: void OpenActivityInviteCallback(IntPtr ptr, Result result)
+Func __Discord_OverlayManager_OpenActivityInviteCallbackHandler($pPtr, $iResult)
+    #forceref $pPtr
+    If $__Discord_OverlayManager_fnOpenActivityInviteCallbackHandler <> 0 Then
+        $__Discord_OverlayManager_fnOpenActivityInviteCallbackHandler($iResult)
+    EndIf
+EndFunc
+
+; Handler for: void OpenGuildInviteCallback(IntPtr ptr, Result result)
+Func __Discord_OverlayManager_OpenGuildInviteCallbackHandler($pPtr, $iResult)
+    #forceref $pPtr
+    If $__Discord_OverlayManager_fnOpenGuildInviteCallbackHandler <> 0 Then
+        $__Discord_OverlayManager_fnOpenGuildInviteCallbackHandler($iResult)
+    EndIf
+EndFunc
+
+; Handler for: void OpenVoiceSettingsCallback(IntPtr ptr, Result result)
+Func __Discord_OverlayManager_OpenVoiceSettingsCallbackHandler($pPtr, $iResult)
+    #forceref $pPtr
+    If $__Discord_OverlayManager_fnOpenVoiceSettingsCallbackHandler <> 0 Then
+        $__Discord_OverlayManager_fnOpenVoiceSettingsCallbackHandler($iResult)
+    EndIf
 EndFunc
 
 Func __Discord_OverlayManager_Dispose()
+    For $i = 0 To 0
+        If $__Discord_OverlayManager_ahCallbacks[$i] Then
+            DllCallbackFree($__Discord_OverlayManager_ahCallbacks[$i])
+            $__Discord_OverlayManager_ahCallbacks[$i] = 0
+        EndIf
+    Next
+    If $__Discord_OverlayManager_hSetLockedCallback Then
+        DllCallbackFree($__Discord_OverlayManager_hSetLockedCallback)
+        $__Discord_OverlayManager_hSetLockedCallback = 0
+    EndIf
+    If $__Discord_OverlayManager_hOpenActivityInviteCallback Then
+        DllCallbackFree($__Discord_OverlayManager_hOpenActivityInviteCallback)
+        $__Discord_OverlayManager_hOpenActivityInviteCallback = 0
+    EndIf
+    If $__Discord_OverlayManager_hOpenGuildInviteCallback Then
+        DllCallbackFree($__Discord_OverlayManager_hOpenGuildInviteCallback)
+        $__Discord_OverlayManager_hOpenGuildInviteCallback = 0
+    EndIf
+    If $__Discord_OverlayManager_hOpenVoiceSettingsCallback Then
+        DllCallbackFree($__Discord_OverlayManager_hOpenVoiceSettingsCallback)
+        $__Discord_OverlayManager_hOpenVoiceSettingsCallback = 0
+    EndIf
 EndFunc
 #endregion Overlay manager private functions
 
+; Unimplemented
 #region Relationship manager private functions
 Func __Discord_RelationshipManager_Init()
     $__Discord_apMethodPtrs[$__DISCORD_RELATIONSHIPMANAGER] = DllCallAddress("ptr:cdecl", _
@@ -1203,6 +1808,7 @@ Func __Discord_RelationshipManager_Dispose()
 EndFunc
 #endregion Relationship manager private functions
 
+; Unimplemented
 #region Storage manager private functions
 Func __Discord_StorageManager_Init()
     $__Discord_apMethodPtrs[$__DISCORD_STORAGEMANAGER] = DllCallAddress("ptr:cdecl", _
@@ -1219,6 +1825,7 @@ Func __Discord_StorageManager_Dispose()
 EndFunc
 #endregion Storage manager private functions
 
+; Unimplemented
 #region Store manager private functions
 Func __Discord_StoreManager_Init()
     $__Discord_apMethodPtrs[$__DISCORD_STOREMANAGER] = DllCallAddress("ptr:cdecl", _
@@ -1235,6 +1842,7 @@ Func __Discord_StoreManager_Dispose()
 EndFunc
 #endregion Store manager private functions
 
+; Unimplemented
 #region Voice manager private functions
 Func __Discord_VoiceManager_Init()
     $__Discord_apMethodPtrs[$__DISCORD_VOICEMANAGER] = DllCallAddress("ptr:cdecl", _
@@ -1262,9 +1870,9 @@ EndFunc
 ; Return values .: Success            - True
 ;                  Invalid parameters - False
 ; Author ........: Alan72104#4011
-; Modified.......: 
-; Remarks .......: 
-; Related .......: 
+; Modified.......:
+; Remarks .......:
+; Related .......:
 ; Link ..........: https://discord.com/developers/docs/game-sdk/users#oncurrentuserupdate
 ; Example .......: ; GetCurrentUser will error until this fires once
 ;                  _Discord_UserManager_OnCurrentUserUpdate(OnCurrentUserUpdateHandler)
@@ -1295,8 +1903,8 @@ EndFunc
 ; Return values .: Success - User array
 ;                  Failure - False with @error = Discord result
 ; Author ........: Alan72104#4011
-; Modified.......: 
-; Remarks .......: 
+; Modified.......:
+; Remarks .......:
 ; Related .......: User array [Int64 Id, String Username, String Discriminator, String Avatar, Bool Bot]
 ; Link ..........: https://discord.com/developers/docs/game-sdk/users#getcurrentuser
 ; Example .......: ; GetCurrentUser will error until this fires once
@@ -1337,8 +1945,8 @@ EndFunc
 ; Return values .: Success            - True
 ;                  Invalid parameters - False
 ; Author ........: Alan72104#4011
-; Modified.......: 
-; Remarks .......: 
+; Modified.......:
+; Remarks .......:
 ; Related .......: $DISCORD_RESULT...
 ;                  User array [Int64 Id, String Username, String Discriminator, String Avatar, Bool Bot]
 ; Link ..........: https://discord.com/developers/docs/game-sdk/users#oncurrentuserupdate
@@ -1371,8 +1979,8 @@ EndFunc
 ; Return values .: Success - PREMIUMTYPE
 ;                  Failure - False with @error = Discord result
 ; Author ........: Alan72104#4011
-; Modified.......: 
-; Remarks .......: 
+; Modified.......:
+; Remarks .......:
 ; Related .......: $DISCORD_PREMIUMTYPE..., $DISCORD_RESULT...
 ; Link ..........: https://discord.com/developers/docs/game-sdk/users#getcurrentuserpremiumtype
 ; ===============================================================================================================================
@@ -1396,8 +2004,8 @@ EndFunc
 ; Return values .: Success - Bool
 ;                  Failure - False with @error = Discord result
 ; Author ........: Alan72104#4011
-; Modified.......: 
-; Remarks .......: 
+; Modified.......:
+; Remarks .......:
 ; Related .......: $DISCORD_USERFLAG...
 ; Link ..........: https://discord.com/developers/docs/game-sdk/users#currentuserhasflag
 ; ===============================================================================================================================
@@ -1416,20 +2024,6 @@ EndFunc
 #endregion User manager public functions
 
 #region User manager private functions
-; Handler for: void GetUserCallback(IntPtr ptr, Result result, ref User user)
-Func __Discord_UserManager_GetUserCallbackHandler($pPtr, $iResult, $pUser)
-    #forceref $pPtr
-    If $__Discord_UserManager_fnGetUserCallbackHandler <> 0 Then
-        Local $tUser = DllStructCreate($__DISCORD_tagUSER, $pUser)
-        Local $aUser = [DllStructGetData($tUser, "Id"), _
-                        DllStructGetData($tUser, "Username"), _
-                        DllStructGetData($tUser, "Discriminator"), _
-                        DllStructGetData($tUser, "Avatar"), _
-                        DllStructGetData($tUser, "Bot")]
-        $__Discord_UserManager_fnGetUserCallbackHandler($iResult, $aUser)
-    EndIf
-EndFunc
-
 Func __Discord_UserManager_Init()
     $__Discord_apMethodPtrs[$__DISCORD_USERMANAGER] = DllCallAddress("ptr:cdecl", _
                                                                      DllStructGetData($__Discord_atMethodInterfaces[$__DISCORD_CORE], "GetUserManager"), _
@@ -1449,6 +2043,20 @@ Func __Discord_UserManager_OnCurrentUserUpdateHandler($pPtr)
     #forceref $pPtr
     If $__Discord_UserManager_afnCallbackHandlers[0] <> 0 Then
         $__Discord_UserManager_afnCallbackHandlers[0]()
+    EndIf
+EndFunc
+
+; Handler for: void GetUserCallback(IntPtr ptr, Result result, ref User user)
+Func __Discord_UserManager_GetUserCallbackHandler($pPtr, $iResult, $pUser)
+    #forceref $pPtr
+    If $__Discord_UserManager_fnGetUserCallbackHandler <> 0 Then
+        Local $tUser = DllStructCreate($__DISCORD_tagUSER, $pUser)
+        Local $aUser = [DllStructGetData($tUser, "Id"), _
+                        DllStructGetData($tUser, "Username"), _
+                        DllStructGetData($tUser, "Discriminator"), _
+                        DllStructGetData($tUser, "Avatar"), _
+                        DllStructGetData($tUser, "Bot")]
+        $__Discord_UserManager_fnGetUserCallbackHandler($iResult, $aUser)
     EndIf
 EndFunc
 

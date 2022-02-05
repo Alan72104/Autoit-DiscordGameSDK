@@ -1,6 +1,8 @@
 #include-once
+
 ; #CONSTANTS# ===================================================================================================================
 Global Enum $DISCORD_RESULT_OK = 0, _
+            $DISCORD_OK = $DISCORD_RESULT_OK, _
             $DISCORD_RESULT_SERVICEUNAVAILABLE = 1, _
             $DISCORD_RESULT_INVALIDVERSION = 2, _
             $DISCORD_RESULT_LOCKFAILED = 3, _
@@ -53,6 +55,7 @@ Global Enum $DISCORD_CREATEFLAGS_DEFAULT = 0, _
 Global Enum $DISCORD_PREMIUMTYPE_NONE = 0, _
             $DISCORD_PREMIUMTYPE_TIER1, _
             $DISCORD_PREMIUMTYPE_TIER2
+Global Enum $DISCORD_IMAGETYPE_USER = 0
 Global Enum $DISCORD_ACTIVITYTYPE_PLAYING = 0, _
             $DISCORD_ACTIVITYTYPE_STREAMING, _
             $DISCORD_ACTIVITYTYPE_LISTENING, _
@@ -111,6 +114,15 @@ Global Const $__DISCORD_tagOAUTH2TOKEN = "struct;" & _
                                          "char Scopes[1024];" & _
                                          "int64 Expires;" & _
                                          "endstruct;"
+Global Const $__DISCORD_tagIMAGEHANDLE = "struct;" & _
+                                         "int Type;" & _
+                                         "int64 Id;" & _
+                                         "uint Size;" & _
+                                         "endstruct;"
+Global Const $__DISCORD_tagIMAGEDIMENSIONS = "struct;" & _
+                                             "uint Width;" & _
+                                             "uint Height;" & _
+                                             "endstruct;"
 Global Const $__DISCORD_tagACTIVITY = "struct;" & _
                                       "int Type;" & _
                                       "int64 ApplicationId;" & _
@@ -118,7 +130,7 @@ Global Const $__DISCORD_tagACTIVITY = "struct;" & _
                                       "char State[128];" & _
                                       "char Details[128];" & _
                                       "int64 Timestamps_Start;" & _
-                                      "int64 Timerstamps_End;" & _
+                                      "int64 Timestamps_End;" & _
                                       "char Assets_LargeImage[128];" & _
                                       "char Assets_LargeText[128];" & _
                                       "char Assets_SmallImage[128];" & _
@@ -131,6 +143,12 @@ Global Const $__DISCORD_tagACTIVITY = "struct;" & _
                                       "char Secrets_Spectate[128];" & _
                                       "boolean Instance;" & _
                                       "endstruct;"
+Global Const $__DISCORD_tagUSERACHIEVEMENT = "struct;" & _
+                                             "int64 UserId;" & _
+                                             "int64 AchievementId;" & _
+                                             "byte PercentComplete;" & _
+                                             "char UnlockedAt[64];" & _
+                                             "endstruct;"
 ; Discord classes
 Global Enum $__DISCORD_LOBBYTRANSACTION, _
             $__DISCORD_LOBBYMEMBERTRANSACTION, _
