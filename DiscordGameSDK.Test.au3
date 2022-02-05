@@ -40,7 +40,7 @@ Func Main()
     ; Get whatever user you want
     _Discord_UserManager_GetUser(450285582585692161, GetUserHandler)
     
-    ; Set up the rich presense activity
+    ; Set up the rich presence activity
     Local $now = _Date_Time_GetSystemTime()
     Local $unixUtc = _DateDiff('s', "1970/01/01 00:00:00", _Date_Time_SystemTimeToDateTimeStr($now, 1))
     Local $activity = _Discord_ActivityManager_MakeActivitySimple("State", "Details", _
