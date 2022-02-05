@@ -7,10 +7,14 @@
 ; Global $hGui, $hPic
 HotKeySet("{F7}", "Terminate")
 
-; This SDK is quite unstable so random crash might occur
-; Always refer to the official guide below
+; !!This SDK is quite unstable so random crash might occur!!
+; !!Always refer to the official guide!!
+
+; First do the Step 1 and Get Set Up in the official guide
 ; https://discord.com/developers/docs/game-sdk/sdk-starter-guide
-; https://discord.com/developers/docs/game-sdk/discord
+; Download the sdk, extract,
+; rename the DLL in "discord_game_sdk\lib\x86_64" folder to "discord_game_sdk64.dll",
+; then copy both DLLs in "discord_game_sdk\lib" to your main script folder and get going
 Func Main()
     ; Init must be called once with a correct application id!
     If Not _Discord_Init(939233557233139742) Then

@@ -213,7 +213,7 @@ Func _Discord_Init($iDiscordId, $iFlags = $DISCORD_CREATEFLAGS_DEFAULT, $sDllFol
     If @AutoItX64 Then
         $hDll = DllOpen($sDllFolderPath & "discord_game_sdk64.dll")
     Else
-        $hDll = DllOpen($sDllFolderPath & "discord_game_sdk32.dll")
+        $hDll = DllOpen($sDllFolderPath & "discord_game_sdk.dll")
     EndIf
     If $hDll = -1 Then
         Return SetError(4, 0, False)
