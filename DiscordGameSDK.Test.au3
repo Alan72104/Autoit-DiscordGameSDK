@@ -65,7 +65,7 @@ Func Main()
             c("RunCallbacks failed with $", 1, _Discord_GetResultString($res))
             ExitLoop
         EndIf
-        If $gui
+        If $gui Then
             Local $msg = GUIGetMsg()
             Switch $msg
                 Case $GUI_EVENT_CLOSE
