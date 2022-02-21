@@ -6,6 +6,7 @@
 
 Global Const $gui = False
 Global $hGui, $hPic
+Global $relationshipRefreshed = False, $relationshipFiltered = False
 HotKeySet("{F7}", "Terminate")
 
 ; !!This SDK is quite unstable so random crash might occur!!
@@ -57,6 +58,11 @@ Func Main()
     ; Update the activity
     _Discord_ActivityManager_UpdateActivity($activity, UpdateActivityHandler)
     
+    ; Assign this handle right away to get the initial relationships update
+    ; This callback will only be fired when the whole list is initially loaded or was reset
+    ; Wait for OnRefresh to fire to access a stable list
+    _Discord_RelationshipManager_OnRefresh(RefreshHandler)
+    
     Local $t = TimerInit()
     While TimerDiff($t) < 10000 * 1000
         ; You must keep runing all pending events in loop
@@ -65,6 +71,20 @@ Func Main()
             c("RunCallbacks failed with $", 1, _Discord_GetResultString($res))
             ExitLoop
         EndIf
+        
+        If $relationshipRefreshed And Not $relationshipFiltered Then
+            _Discord_RelationshipManager_Filter(FilterHandler)
+            $relationshipFiltered = True
+            ; Loop over all friends a user has
+            Local $count = _Discord_RelationshipManager_Count()
+            For $i = 0 To $count - 1
+                ; Get an individual relationship from the list
+                Local $r = _Discord_RelationshipManager_GetAt($i)
+                c("Relationships: $ $", 1, $r[0], $r[2])
+                ; Save r off to a list of user's relationships
+            Next
+        EndIf
+        
         If $gui Then
             Local $msg = GUIGetMsg()
             Switch $msg
@@ -77,6 +97,18 @@ Func Main()
 EndFunc
 
 Main()
+
+; Filter a user's relationship list to be just friends
+; Use this list as your base
+Func RefreshHandler()
+    $relationshipRefreshed = True
+EndFunc
+
+Func FilterHandler($relationship)
+    ca($relationship)
+    ; Local $t = __Discord_PutArrayIntoStruct($relationship, $__DISCORD_tagRELATIONSHIP)
+    Return $relationship[0] = $DISCORD_RELATIONSHIPTYPE_FRIEND
+EndFunc
 
 Func FetchCallbackHandler($result, $handle)
     If $result <> $DISCORD_RESULT_OK Then
@@ -115,7 +147,7 @@ Func GetUserHandler($result, $user)
         c("Got user\n  Id: $\n  Username: $\n  Discriminator: $\n  Avatar: $\n  Bot: $", 1, $user[0], $user[1], $user[2], $user[3], $user[4])
         If $gui Then
             ; Request users' avatar data
-            This can only be done after a user is successfully fetched
+            ; This can only be done after a user is successfully fetched
             Local $pfpHandle = _Discord_ImageManager_MakeHandle($DISCORD_IMAGETYPE_USER, 450285582585692161, 512)
             _Discord_ImageManager_Fetch($pfpHandle, False, FetchCallbackHandler)
         EndIf

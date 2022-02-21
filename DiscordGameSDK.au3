@@ -2,6 +2,7 @@
 #AutoIt3Wrapper_Au3Check_Parameters=-d -w 1 -w 2 -w 3 -w 4 -w 5 -w 6 -w 7
 #AutoIt3Wrapper_AU3Check_Stop_OnWarning=Y
 #include-once
+#include <StringConstants.au3>
 #include "DiscordGameSDK.Constants.au3"
 
 ; #INDEX# =======================================================================================================================
@@ -64,6 +65,10 @@
 ;_Discord_AchievementManager_CountUserAchievements
 ;_Discord_AchievementManager_GetUserAchievement
 ;_Discord_AchievementManager_GetUserAchievementAt
+;_Discord_RelationshipManager_Filter
+;_Discord_RelationshipManager_Count
+;_Discord_RelationshipManager_Get
+;_Discord_RelationshipManager_GetAt
 ; ===============================================================================================================================
 
 #region Internal variables
@@ -122,6 +127,11 @@ Global $__Discord_AchievementManager_hSetUserAchievementCallback = 0
 Global $__Discord_AchievementManager_fnSetUserAchievementCallbackHandler = 0
 Global $__Discord_AchievementManager_hFetchUserAchievementsCallback = 0
 Global $__Discord_AchievementManager_fnFetchUserAchievementsCallbackHandler = 0
+
+Global $__Discord_RelationshipManager_ahCallbacks[2]
+Global $__Discord_RelationshipManager_afnCallbackHandlers[2]
+Global $__Discord_RelationshipManager_hFilterCallback = 0
+Global $__Discord_RelationshipManager_fnFilterCallbackHandler = 0
 #endregion Internal variables
 
 #region Core public functions
@@ -462,6 +472,70 @@ Func __Discord_Dispose()
         $__Discord_hDll = 0
     EndIf
 EndFunc
+
+Func __Discord_MakeStructStructTag($tagTag, $tagTag1 = "", $tagTag2 = "", $tagTag3 = "", $tagTag4 = "", $tagTag5 = "")
+    #forceref $tagTag1, $tagTag2, $tagTag3, $tagTag4, $tagTag5 
+    For $i = 1 To @NumParams - 1
+        Local $iPos = StringInStr($tagTag, "struct ", $STR_NOCASESENSEBASIC)
+        If Not $iPos Then ExitLoop
+        Local $iPosStructName = StringInStr($tagTag, " ", $STR_NOCASESENSEBASIC, 2, $iPos) + 1
+        Local $iPosSemicolon = StringInStr($tagTag, ";", $STR_NOCASESENSEBASIC, 1, $iPosStructName)
+        Local $sStructName = StringMid($tagTag, $iPosStructName, $iPosSemicolon - $iPosStructName)
+        Local $tagTagToInsert = Eval("tagTag" & $i)
+        $tagTagToInsert = StringTrimLeft($tagTagToInsert, 7)
+        $tagTagToInsert = StringTrimRight($tagTagToInsert, 10)
+        $tagTagToInsert = StringReplace($tagTagToInsert, " ", " " & $sStructName & "_", 0, $STR_NOCASESENSEBASIC)
+        $tagTag = StringLeft($tagTag, $iPos - 1) & $tagTagToInsert & StringRight($tagTag, StringLen($tagTag) - $iPosSemicolon)
+    Next
+    $tagTag = "struct;" & $tagTag
+    $tagTag = $tagTag & "endstruct;"
+    Return $tagTag
+EndFunc
+
+Func __Discord_PutStructIntoArray($tStruct, $tagRef)
+    StringReplace($tagRef, ";", ";", 0, $STR_NOCASESENSEBASIC)
+    Local $iEleCount = @extended - 2
+    Local $aArray[$iEleCount]
+    For $i = 1 To $iEleCount
+        $aArray[$i - 1] = DllStructGetData($tStruct, $i)
+    Next
+    Return $aArray
+EndFunc
+
+Func __Discord_PutArrayIntoStruct($aArray, $tagRef)
+    StringReplace($tagRef, ";", ";", 0, $STR_NOCASESENSEBASIC)
+    Local $iEleCount = @extended - 2
+    Local $tStruct = DllStructCreate($tagRef)
+    For $i = 1 To $iEleCount
+        DllStructSetData($tStruct, $i, $aArray[$i - 1])
+    Next
+    Return $tStruct
+EndFunc
+    
+Func __Discord_ArrayAdd(ByRef $aArray, $vEle, $iAt = 999)
+    Local $iArrSize = UBound($aArray)
+    Local $iEleSize
+    If $iAt = 999 Then
+        $iAt = $iArrSize
+    EndIf
+    If IsArray($vEle) Then
+        $iEleSize = UBound($vEle)
+        ReDim $aArray[$iArrSize + $iEleSize]
+    Else
+        $iEleSize = 1
+        ReDim $aArray[$iArrSize + 1]
+    EndIf
+    For $i = $iArrSize - 1 To $iAt Step -1
+        $aArray[$i + $iEleSize] = $aArray[$i]
+    Next
+    If IsArray($vEle) Then
+        For $i = 0 To $iEleSize - 1
+            $aArray[$iAt + $i] = $vEle[$i]
+        Next
+    Else
+        $aArray[$iAt] = $vEle
+    EndIf
+EndFunc
 #endregion Core private functions
 
 #region Achievement manager public functions
@@ -525,11 +599,7 @@ Func _Discord_AchievementManager_GetUserAchievement($iUserAchievementId)
     If $aResult[0] <> $DISCORD_RESULT_OK Then
         Return SetError($aResult[0], 0, False)
     EndIf
-    Local $aUserAchievement[4]
-    $aUserAchievement[0] = DllStructGetData($tUserAchievement, "UserId")
-    $aUserAchievement[1] = DllStructGetData($tUserAchievement, "AchievementId")
-    $aUserAchievement[2] = DllStructGetData($tUserAchievement, "PercentComplete")
-    $aUserAchievement[3] = DllStructGetData($tUserAchievement, "UnlockedAt")
+    Local $aUserAchievement = __Discord_PutStructIntoArray($tUserAchievement, $__DISCORD_tagUSERACHIEVEMENT)
     Return $aUserAchievement
 EndFunc
 
@@ -543,11 +613,7 @@ Func _Discord_AchievementManager_GetUserAchievementAt($iIndex)
     If $aResult[0] <> $DISCORD_RESULT_OK Then
         Return SetError($aResult[0], 0, False)
     EndIf
-    Local $aUserAchievement[4]
-    $aUserAchievement[0] = DllStructGetData($tUserAchievement, "UserId")
-    $aUserAchievement[1] = DllStructGetData($tUserAchievement, "AchievementId")
-    $aUserAchievement[2] = DllStructGetData($tUserAchievement, "PercentComplete")
-    $aUserAchievement[3] = DllStructGetData($tUserAchievement, "UnlockedAt")
+    Local $aUserAchievement = __Discord_PutStructIntoArray($tUserAchievement, $__DISCORD_tagUSERACHIEVEMENT)
     Return $aUserAchievement
 EndFunc
 #endregion Achievement manager public functions
@@ -572,11 +638,7 @@ Func __Discord_AchievementManager_OnUserAchievementUpdateHandler($pPtr, $pUserAc
     #forceref $pPtr
     If $__Discord_AchievementManager_afnCallbackHandlers[0] <> 0 Then
         Local $tUserAchievement = DllStructCreate($__DISCORD_tagUSERACHIEVEMENT, $pUserAcheievement)
-        Local $aUserAchievement[4]
-        $aUserAchievement[0] = DllStructGetData($tUserAchievement, "UserId")
-        $aUserAchievement[1] = DllStructGetData($tUserAchievement, "AchievementId")
-        $aUserAchievement[2] = DllStructGetData($tUserAchievement, "PercentComplete")
-        $aUserAchievement[3] = DllStructGetData($tUserAchievement, "UnlockedAt")
+        Local $aUserAchievement = __Discord_PutStructIntoArray($tUserAchievement, $__DISCORD_tagUSERACHIEVEMENT)
         $__Discord_AchievementManager_afnCallbackHandlers[0]($aUserAchievement)
     EndIf
 EndFunc
@@ -821,26 +883,11 @@ Func _Discord_ActivityManager_UpdateActivity($aActivity, $fnHandler)
         $__Discord_ActivityManager_hUpdateActivityCallback = DllCallbackRegister("__Discord_ActivityManager_UpdateActivityCallbackHandler", "none:cdecl", "ptr;int")
     EndIf
     $__Discord_ActivityManager_fnUpdateActivityCallbackHandler = $fnHandler
-    Local $tActivity = DllStructCreate($__DISCORD_tagACTIVITY)
     ; Readonly fields
-    ; DllStructSetData($tActivity, "Type", $aActivity[0])
-    ; DllStructSetData($tActivity, "ApplicationId", $aActivity[1])
-    ; DllStructSetData($tActivity, "Name", $aActivity[2])
-    DllStructSetData($tActivity, "State", $aActivity[3])
-    DllStructSetData($tActivity, "Details", $aActivity[4])
-    DllStructSetData($tActivity, "Timestamps_Start", $aActivity[5])
-    DllStructSetData($tActivity, "Timestamps_End", $aActivity[6])
-    DllStructSetData($tActivity, "Assets_LargeImage", $aActivity[7])
-    DllStructSetData($tActivity, "Assets_LargeText", $aActivity[8])
-    DllStructSetData($tActivity, "Assets_SmallImage", $aActivity[9])
-    DllStructSetData($tActivity, "Assets_SmallText", $aActivity[10])
-    DllStructSetData($tActivity, "Party_Id", $aActivity[11])
-    DllStructSetData($tActivity, "Party_Size_CurrentSize", $aActivity[12])
-    DllStructSetData($tActivity, "Party_Size_MaxSize", $aActivity[13])
-    DllStructSetData($tActivity, "Secrets_Match", $aActivity[14])
-    DllStructSetData($tActivity, "Secrets_Join", $aActivity[15])
-    DllStructSetData($tActivity, "Secrets_Spectate", $aActivity[16])
-    DllStructSetData($tActivity, "Instance", $aActivity[17])
+    $aActivity[0] = 0
+    $aActivity[1] = 0
+    $aActivity[2] = ""
+    Local $tActivity = __Discord_PutArrayIntoStruct($aActivity, $__DISCORD_tagACTIVITY)
     DllCallAddress("none:cdecl", _
                    DllStructGetData($__Discord_atMethodInterfaces[$__DISCORD_ACTIVITYMANAGER], "UpdateActivity"), _
                    "ptr", $__Discord_apMethodPtrs[$__DISCORD_ACTIVITYMANAGER], _
@@ -1030,11 +1077,7 @@ Func __Discord_ActivityManager_OnActivityJoinRequestHandler($pPtr, $pUser)
     #forceref $pPtr
     If $__Discord_ActivityManager_afnCallbackHandlers[2] <> 0 Then
         Local $tUser = DllStructCreate($__DISCORD_tagUSER, $pUser)
-        Local $aUser = [DllStructGetData($tUser, "Id"), _
-                        DllStructGetData($tUser, "Username"), _
-                        DllStructGetData($tUser, "Discriminator"), _
-                        DllStructGetData($tUser, "Avatar"), _
-                        DllStructGetData($tUser, "Bot")]
+        Local $aUser = __Discord_PutStructIntoArray($tUser, $__DISCORD_tagUSER)
         $__Discord_ActivityManager_afnCallbackHandlers[2]($aUser)
     EndIf
 EndFunc
@@ -1044,30 +1087,9 @@ Func __Discord_ActivityManager_OnActivityInviteHandler($pPtr, $iType, $pUser, $p
     #forceref $pPtr
     If $__Discord_ActivityManager_afnCallbackHandlers[3] <> 0 Then
         Local $tUser = DllStructCreate($__DISCORD_tagUSER, $pUser)
-        Local $aUser = [DllStructGetData($tUser, "Id"), _
-                        DllStructGetData($tUser, "Username"), _
-                        DllStructGetData($tUser, "Discriminator"), _
-                        DllStructGetData($tUser, "Avatar"), _
-                        DllStructGetData($tUser, "Bot")]
+        Local $aUser = __Discord_PutStructIntoArray($tUser, $__DISCORD_tagUSER)
         Local $tActivity = DllStructCreate($__DISCORD_tagACTIVITY, $pActivity)
-        Local $aActivity = [DllStructGetData($tActivity, "Type"), _
-                            DllStructGetData($tActivity, "ApplicationId"), _
-                            DllStructGetData($tActivity, "Name"), _
-                            DllStructGetData($tActivity, "State"), _
-                            DllStructGetData($tActivity, "Details"), _
-                            DllStructGetData($tActivity, "Timestamps_Start"), _
-                            DllStructGetData($tActivity, "Timestamps_End"), _
-                            DllStructGetData($tActivity, "Assets_LargeImage"), _
-                            DllStructGetData($tActivity, "Assets_LargeText"), _
-                            DllStructGetData($tActivity, "Assets_SmallImage"), _
-                            DllStructGetData($tActivity, "Assets_SmallText"), _
-                            DllStructGetData($tActivity, "Party_Id"), _
-                            DllStructGetData($tActivity, "Party_Size_CurrentSize"), _
-                            DllStructGetData($tActivity, "Party_Size_MaxSize"), _
-                            DllStructGetData($tActivity, "Secrets_Match"), _
-                            DllStructGetData($tActivity, "Secrets_Join"), _
-                            DllStructGetData($tActivity, "Secrets_Spectate"), _
-                            DllStructGetData($tActivity, "Instance")]
+        Local $aActivity = __Discord_PutStructIntoArray($tActivity, $__DISCORD_tagACTIVITY)
         $__Discord_ActivityManager_afnCallbackHandlers[3]($iType, $aUser, $aActivity)
     EndIf
 EndFunc
@@ -1313,9 +1335,7 @@ Func __Discord_ApplicationManager_GetOAuth2TokenCallbackHandler($pPtr, $iResult,
     #forceref $pPtr
     If $__Discord_ApplicationManager_fnGetOAuth2TokenCallbackHandler <> 0 Then
         Local $tOAuth2Token = DllStructCreate($__DISCORD_tagOAUTH2TOKEN, $pOAuth2Token)
-        Local $aOAuth2Token = [DllStructGetData($tOAuth2Token, "AccessToken"), _
-                               DllStructGetData($tOAuth2Token, "Scopes"), _
-                               DllStructGetData($tOAuth2Token, "Expires")]
+        Local $aOAuth2Token = __Discord_PutStructIntoArray($tOAuth2Token, $__DISCORD_tagOAUTH2TOKEN)
         $__Discord_ApplicationManager_fnGetOAuth2TokenCallbackHandler($iResult, $aOAuth2Token)
     EndIf
 EndFunc
@@ -1356,10 +1376,7 @@ Func _Discord_ImageManager_Fetch($aHandle, $bRefresh, $fnHandler)
         $__Discord_ImageManager_hFetchCallback = DllCallbackRegister("__Discord_ImageManager_FetchCallbackHandler", "none:cdecl", "ptr;int;ptr")
     EndIf
     $__Discord_ImageManager_fnFetchCallbackHandler = $fnHandler
-    Local $tHandle = DllStructCreate($__DISCORD_tagIMAGEHANDLE)
-    DllStructSetData($tHandle, "Type", $aHandle[0])
-    DllStructSetData($tHandle, "Id", $aHandle[1])
-    DllStructSetData($tHandle, "Size", $aHandle[2])
+    Local $tHandle = __Discord_PutArrayIntoStruct($aHandle, $__DISCORD_tagIMAGEHANDLE)
     DllCallAddress("none:cdecl", _
                    DllStructGetData($__Discord_atMethodInterfaces[$__DISCORD_IMAGEMANAGER], "Fetch"), _
                    "ptr", $__Discord_apMethodPtrs[$__DISCORD_IMAGEMANAGER], _
@@ -1374,10 +1391,7 @@ Func _Discord_ImageManager_GetDimensions($aHandle)
     If UBound($aHandle) <> 3 Then
         Return False
     EndIf
-    Local $tHandle = DllStructCreate($__DISCORD_tagIMAGEHANDLE)
-    DllStructSetData($tHandle, "Type", $aHandle[0])
-    DllStructSetData($tHandle, "Id", $aHandle[1])
-    DllStructSetData($tHandle, "Size", $aHandle[2])
+    Local $tHandle = __Discord_PutArrayIntoStruct($aHandle, $__DISCORD_tagIMAGEHANDLE)
     Local $tDimensions = DllStructCreate($__DISCORD_tagIMAGEDIMENSIONS)
     Local $aResult = DllCallAddress("int:cdecl", _
                                     DllStructGetData($__Discord_atMethodInterfaces[$__DISCORD_IMAGEMANAGER], "GetDimensions"), _
@@ -1387,9 +1401,7 @@ Func _Discord_ImageManager_GetDimensions($aHandle)
     If $aResult[0] <> $DISCORD_RESULT_OK Then
         Return SetError($aResult[0], 0, False)
     EndIf
-    Local $aDimensions[2]
-    $aDimensions[0] = DllStructGetData($tDimensions, "Width")
-    $aDimensions[1] = DllStructGetData($tDimensions, "Height")
+    Local $aDimensions = __Discord_PutStructIntoArray($tDimensions, $__DISCORD_tagIMAGEDIMENSIONS)
     Return $aDimensions
 EndFunc
 
@@ -1399,10 +1411,7 @@ Func _Discord_ImageManager_GetData($aHandle)
     EndIf
     Local $aDimensions = _Discord_ImageManager_GetDimensions($aHandle)
     Local $iLen = $aDimensions[0] * $aDimensions[1] * 4
-    Local $tHandle = DllStructCreate($__DISCORD_tagIMAGEHANDLE)
-    DllStructSetData($tHandle, "Type", $aHandle[0])
-    DllStructSetData($tHandle, "Id", $aHandle[1])
-    DllStructSetData($tHandle, "Size", $aHandle[2])
+    Local $tHandle = __Discord_PutArrayIntoStruct($aHandle, $__DISCORD_tagIMAGEHANDLE)
     Local $tData = DllStructCreate("byte[" & $iLen & "]")
     Local $aResult = DllCallAddress("int:cdecl", _
                                     DllStructGetData($__Discord_atMethodInterfaces[$__DISCORD_IMAGEMANAGER], "GetData"), _
@@ -1434,10 +1443,7 @@ Func __Discord_ImageManager_FetchCallbackHandler($pPtr, $iResult, $pHandleResult
     #forceref $pPtr
     If $__Discord_ImageManager_fnFetchCallbackHandler <> 0 Then
         Local $tHandleResult = DllStructCreate($__DISCORD_tagIMAGEHANDLE, $pHandleResult)
-        Local $aHandleResult[3]
-        $aHandleResult[0] = DllStructGetData($tHandleResult, "Type")
-        $aHandleResult[1] = DllStructGetData($tHandleResult, "Id")
-        $aHandleResult[2] = DllStructGetData($tHandleResult, "Size")
+        Local $aHandleResult = __Discord_PutStructIntoArray($tHandleResult, $__DISCORD_tagIMAGEHANDLE)
         $__Discord_ImageManager_fnFetchCallbackHandler($iResult, $aHandleResult)
     EndIf
 EndFunc
@@ -1790,7 +1796,80 @@ Func __Discord_OverlayManager_Dispose()
 EndFunc
 #endregion Overlay manager private functions
 
-; Unimplemented
+#region Relationship manager public functions
+Func _Discord_RelationshipManager_OnRefresh($fnHandler)
+    If VarGetType($fnHandler) <> "UserFunction" Then
+        Return False
+    EndIf
+    $__Discord_RelationshipManager_afnCallbackHandlers[0] = $fnHandler
+    Return True
+EndFunc
+
+Func _Discord_RelationshipManager_OnRelationshipUpdate($fnHandler)
+    If VarGetType($fnHandler) <> "UserFunction" Then
+        Return False
+    EndIf
+    $__Discord_RelationshipManager_afnCallbackHandlers[1] = $fnHandler
+    Return True
+EndFunc
+
+Func _Discord_RelationshipManager_Filter($fnHandler)
+    If VarGetType($fnHandler) <> "UserFunction" Then
+        Return False
+    EndIf
+    If $__Discord_RelationshipManager_hFilterCallback = 0 Then
+        $__Discord_RelationshipManager_hFilterCallback = DllCallbackRegister("__Discord_RelationshipManager_FilterCallbackHandler", "boolean", "ptr;ptr")
+    EndIf
+    $__Discord_RelationshipManager_fnFilterCallbackHandler = $fnHandler
+    DllCallAddress("none:cdecl", _
+                   DllStructGetData($__Discord_atMethodInterfaces[$__DISCORD_RELATIONSHIPMANAGER], "Filter"), _
+                   "ptr", $__Discord_apMethodPtrs[$__DISCORD_RELATIONSHIPMANAGER], _
+                   "ptr", Null, _
+                   "ptr", DllCallbackGetPtr($__Discord_RelationshipManager_hFilterCallback))
+    Return True
+EndFunc
+
+Func _Discord_RelationshipManager_Count()
+    Local $aResult = DllCallAddress("int:cdecl", _
+                                    DllStructGetData($__Discord_atMethodInterfaces[$__DISCORD_RELATIONSHIPMANAGER], "Count"), _
+                                    "ptr", $__Discord_apMethodPtrs[$__DISCORD_RELATIONSHIPMANAGER], _
+                                    "int*", 0)
+    If $aResult[0] <> $DISCORD_RESULT_OK Then
+        Return SetError($aResult[0], 0, False)
+    EndIf
+    Local $iCount = $aResult[2]
+    Return $iCount
+EndFunc
+
+Func _Discord_RelationshipManager_Get($iUserId)
+    Local $tRelationship = DllStructCreate($__DISCORD_tagRELATIONSHIP)
+    Local $aResult = DllCallAddress("int:cdecl", _
+                                    DllStructGetData($__Discord_atMethodInterfaces[$__DISCORD_RELATIONSHIPMANAGER], "Get"), _
+                                    "ptr", $__Discord_apMethodPtrs[$__DISCORD_RELATIONSHIPMANAGER], _
+                                    "int64", $iUserId, _
+                                    "ptr", DllStructGetPtr($tRelationship))
+    If $aResult[0] <> $DISCORD_RESULT_OK Then
+        Return SetError($aResult[0], 0, False)
+    EndIf
+    Local $aRelationship = __Discord_PutStructIntoArray($tRelationship, $__DISCORD_tagRELATIONSHIP)
+    Return $aRelationship
+EndFunc
+
+Func _Discord_RelationshipManager_GetAt($iIndex)
+    Local $tRelationship = DllStructCreate($__DISCORD_tagRELATIONSHIP)
+    Local $aResult = DllCallAddress("int:cdecl", _
+                                    DllStructGetData($__Discord_atMethodInterfaces[$__DISCORD_RELATIONSHIPMANAGER], "GetAt"), _
+                                    "ptr", $__Discord_apMethodPtrs[$__DISCORD_RELATIONSHIPMANAGER], _
+                                    "uint", $iIndex, _
+                                    "ptr", DllStructGetPtr($tRelationship))
+    If $aResult[0] <> $DISCORD_RESULT_OK Then
+        Return SetError($aResult[0], 0, False)
+    EndIf
+    Local $aRelationship = __Discord_PutStructIntoArray($tRelationship, $__DISCORD_tagRELATIONSHIP)
+    Return $aRelationship
+EndFunc
+#region Relationship manager public functions
+
 #region Relationship manager private functions
 Func __Discord_RelationshipManager_Init()
     $__Discord_apMethodPtrs[$__DISCORD_RELATIONSHIPMANAGER] = DllCallAddress("ptr:cdecl", _
@@ -1801,9 +1880,54 @@ Func __Discord_RelationshipManager_Init()
 EndFunc
 
 Func __Discord_RelationshipManager_InitEvents()
+    $__Discord_RelationshipManager_afnCallbackHandlers[0] = 0
+    $__Discord_RelationshipManager_ahCallbacks[0] = DllCallbackRegister("__Discord_RelationshipManager_OnRefreshHandler", "none:cdecl", "ptr")
+    DllStructSetData($__Discord_atEventInterfaces[$__DISCORD_RELATIONSHIPMANAGER], "OnRefresh", DllCallbackGetPtr($__Discord_RelationshipManager_ahCallbacks[0]))
+    $__Discord_RelationshipManager_afnCallbackHandlers[1] = 0
+    $__Discord_RelationshipManager_ahCallbacks[1] = DllCallbackRegister("__Discord_RelationshipManager_OnRelationshipUpdateHandler", "none:cdecl", "ptr;ptr")
+    DllStructSetData($__Discord_atEventInterfaces[$__DISCORD_RELATIONSHIPMANAGER], "OnRelationshipUpdate", DllCallbackGetPtr($__Discord_RelationshipManager_ahCallbacks[1]))
+EndFunc
+
+; Handler for: void RefreshHandler(IntPtr ptr)
+Func __Discord_RelationshipManager_OnRefreshHandler($pPtr)
+    #forceref $pPtr
+    If $__Discord_RelationshipManager_afnCallbackHandlers[0] <> 0 Then
+        $__Discord_RelationshipManager_afnCallbackHandlers[0]()
+    EndIf
+EndFunc
+
+; Handler for: void RelationshipUpdateHandler(IntPtr ptr, ref Relationship relationship)
+Func __Discord_RelationshipManager_OnRelationshipUpdateHandler($pPtr, $pRelationship)
+    #forceref $pPtr
+    If $__Discord_RelationshipManager_afnCallbackHandlers[1] <> 0 Then
+        Local $tRelationship = DllStructCreate($__DISCORD_tagRELATIONSHIP, $pRelationship)
+        Local $aRelationship = __Discord_PutStructIntoArray($tRelationship, $__DISCORD_tagRELATIONSHIP)
+        $__Discord_RelationshipManager_afnCallbackHandlers[1]($aRelationship)
+    EndIf
+EndFunc
+
+; Handler for: bool FilterCallback(IntPtr ptr, ref Relationship relationship)
+Func __Discord_RelationshipManager_FilterCallbackHandler($pPtr, $pRelationShip)
+    #forceref $pPtr
+    If $__Discord_RelationshipManager_fnFilterCallbackHandler <> 0 Then
+        Local $tRelationship = DllStructCreate($__DISCORD_tagRELATIONSHIP, $pRelationship)
+        Local $aRelationship = __Discord_PutStructIntoArray($tRelationship, $__DISCORD_tagRELATIONSHIP)
+        Return $__Discord_RelationshipManager_fnFilterCallbackHandler($aRelationship)
+    EndIf
+    Return True
 EndFunc
 
 Func __Discord_RelationshipManager_Dispose()
+    For $i = 0 To 1
+        If $__Discord_RelationshipManager_ahCallbacks[$i] Then
+            DllCallbackFree($__Discord_RelationshipManager_ahCallbacks[$i])
+            $__Discord_RelationshipManager_ahCallbacks[$i] = 0
+        EndIf
+    Next
+    If $__Discord_RelationshipManager_hFilterCallback Then
+        DllCallbackFree($__Discord_RelationshipManager_hFilterCallback)
+        $__Discord_RelationshipManager_hFilterCallback = 0
+    EndIf
 EndFunc
 #endregion Relationship manager private functions
 
@@ -1926,11 +2050,7 @@ Func _Discord_UserManager_GetCurrentUser()
     If $aResult[0] <> $DISCORD_RESULT_OK Then
         Return SetError($aResult[0], 0, False)
     EndIf
-    Local $aUser = [DllStructGetData($tUser, "Id"), _
-                    DllStructGetData($tUser, "Username"), _
-                    DllStructGetData($tUser, "Discriminator"), _
-                    DllStructGetData($tUser, "Avatar"), _
-                    DllStructGetData($tUser, "Bot")]
+    Local $aUser = __Discord_PutStructIntoArray($tUser, $__DISCORD_tagUSER)
     Return $aUser
 EndFunc
 
@@ -2050,11 +2170,7 @@ Func __Discord_UserManager_GetUserCallbackHandler($pPtr, $iResult, $pUser)
     #forceref $pPtr
     If $__Discord_UserManager_fnGetUserCallbackHandler <> 0 Then
         Local $tUser = DllStructCreate($__DISCORD_tagUSER, $pUser)
-        Local $aUser = [DllStructGetData($tUser, "Id"), _
-                        DllStructGetData($tUser, "Username"), _
-                        DllStructGetData($tUser, "Discriminator"), _
-                        DllStructGetData($tUser, "Avatar"), _
-                        DllStructGetData($tUser, "Bot")]
+        Local $aUser = __Discord_PutStructIntoArray($tUser, $__DISCORD_tagUSER)
         $__Discord_UserManager_fnGetUserCallbackHandler($iResult, $aUser)
     EndIf
 EndFunc

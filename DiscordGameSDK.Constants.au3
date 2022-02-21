@@ -1,6 +1,8 @@
 #include-once
 
 ; #CONSTANTS# ===================================================================================================================
+; Call _Discord_GetResultString($res) to get the name
+; https://discord.com/developers/docs/game-sdk/discord#data-models for defination
 Global Enum $DISCORD_RESULT_OK = 0, _
             $DISCORD_OK = $DISCORD_RESULT_OK, _
             $DISCORD_RESULT_SERVICEUNAVAILABLE = 1, _
@@ -65,6 +67,16 @@ Global Enum $DISCORD_ACTIVITYACTIONTYPE_JOIN = 1, _
 Global Enum $DISCORD_ACTIVITYJOINREQUESTREPLY_NO = 0, _
             $DISCORD_ACTIVITYJOINREQUESTREPLY_YES, _
             $DISCORD_ACTIVITYJOINREQUESTREPLY_IGNORE
+Global Enum $DISCORD_STATUS_OFFLINE, _
+            $DISCORD_STATUS_ONLINE, _
+            $DISCORD_STATUS_IDLE, _
+            $DISCORD_STATUS_DONOTDISTURB
+Global Enum $DISCORD_RELATIONSHIPTYPE_NONE = 0, _
+            $DISCORD_RELATIONSHIPTYPE_FRIEND, _
+            $DISCORD_RELATIONSHIPTYPE_BLOCKED, _
+            $DISCORD_RELATIONSHIPTYPE_PENDINGINCOMING, _
+            $DISCORD_RELATIONSHIPTYPE_PENDINGOUTGOING, _
+            $DISCORD_RELATIONSHIPTYPE_IMPLICIT
 Global Enum $DISCORD_USERFLAG_PARTNER = 2, _
             $DISCORD_USERFLAG_HYPESQUADEVENTS = 4, _
             $DISCORD_USERFLAG_HYPESQUADHOUSE1 = 64, _
@@ -143,6 +155,15 @@ Global Const $__DISCORD_tagACTIVITY = "struct;" & _
                                       "char Secrets_Spectate[128];" & _
                                       "boolean Instance;" & _
                                       "endstruct;"
+Global Const $__DISCORD_tagPRESENCE = __Discord_MakeStructStructTag( _
+                                      "int Status;" & _
+                                      "struct Activity Activity;", _
+                                      $__DISCORD_tagACTIVITY)
+Global Const $__DISCORD_tagRELATIONSHIP = __Discord_MakeStructStructTag( _
+                                          "int Type;" & _
+                                          "struct User User;" & _
+                                          "struct Presence Presence;", _
+                                          $__DISCORD_tagUSER, $__DISCORD_tagPRESENCE)
 Global Const $__DISCORD_tagUSERACHIEVEMENT = "struct;" & _
                                              "int64 UserId;" & _
                                              "int64 AchievementId;" & _
@@ -171,22 +192,6 @@ Global Enum $__DISCORD_LOBBYTRANSACTION, _
 Global Const $__DISCORD_tagCOREEVENTS = "struct;" & _
                                         "endstruct;"
 ; Core methods
-; void DestroyHandler(IntPtr MethodsPtr)
-; Result RunCallbacksMethod(IntPtr methodsPtr)
-; void SetLogHookCallback(IntPtr ptr, LogLevel level, [MarshalAs(UnmanagedType_LPStr)]string message)
-; void SetLogHookMethod(IntPtr methodsPtr, LogLevel minLevel, IntPtr callbackData, SetLogHookCallback callback)
-; IntPtr GetApplicationManagerMethod(IntPtr discordPtr)
-; IntPtr GetUserManagerMethod(IntPtr discordPtr)
-; IntPtr GetImageManagerMethod(IntPtr discordPtr)
-; IntPtr GetActivityManagerMethod(IntPtr discordPtr)
-; IntPtr GetRelationshipManagerMethod(IntPtr discordPtr)
-; IntPtr GetLobbyManagerMethod(IntPtr discordPtr)
-; IntPtr GetNetworkManagerMethod(IntPtr discordPtr)
-; IntPtr GetOverlayManagerMethod(IntPtr discordPtr)
-; IntPtr GetStorageManagerMethod(IntPtr discordPtr)
-; IntPtr GetStoreManagerMethod(IntPtr discordPtr)
-; IntPtr GetVoiceManagerMethod(IntPtr discordPtr)
-; IntPtr GetAchievementManagerMethod(IntPtr discordPtr)
 Global Const $__DISCORD_tagCOREMETHODS = "struct;" & _
                                          "ptr Destroy;" & _
                                          "ptr RunCallbacks;" & _
@@ -208,14 +213,6 @@ Global Const $__DISCORD_tagCOREMETHODS = "struct;" & _
 Global Const $__DISCORD_tagAPPLICATIONMANAGEREVENTS = "struct;" & _
                                                       "endstruct;"
 ; Application manager methods
-; void ValidateOrExitCallback(IntPtr ptr, Result result)
-; void ValidateOrExitMethod(IntPtr methodsPtr, IntPtr callbackData, ValidateOrExitCallback callback)
-; void GetCurrentLocaleMethod(IntPtr methodsPtr, StringBuilder locale)
-; void GetCurrentBranchMethod(IntPtr methodsPtr, StringBuilder branch)
-; void GetOAuth2TokenCallback(IntPtr ptr, Result result, ref OAuth2Token oauth2Token)
-; void GetOAuth2TokenMethod(IntPtr methodsPtr, IntPtr callbackData, GetOAuth2TokenCallback callback)
-; void GetTicketCallback(IntPtr ptr, Result result, [MarshalAs(UnmanagedType_LPStr)]ref string data)
-; void GetTicketMethod(IntPtr methodsPtr, IntPtr callbackData, GetTicketCallback callback)
 Global Const $__DISCORD_tagAPPLICATIONMANAGERMETHODS = "struct;" & _
                                                        "ptr ValidateOrExit;" & _
                                                        "ptr GetCurrentLocale;" & _
@@ -224,16 +221,10 @@ Global Const $__DISCORD_tagAPPLICATIONMANAGERMETHODS = "struct;" & _
                                                        "ptr GetTicket;" & _
                                                        "endstruct;"
 ; User manager events
-; void CurrentUserUpdateHandler(IntPtr ptr)
 Global Const $__DISCORD_tagUSERMANAGEREVENTS = "struct;" & _
                                                "ptr OnCurrentUserUpdate;" & _
                                                "endstruct;"
 ; User manager methods
-; Result GetCurrentUserMethod(IntPtr methodsPtr, ref User currentUser)
-; void GetUserCallback(IntPtr ptr, Result result, ref User user)
-; void GetUserMethod(IntPtr methodsPtr, Int64 userId, IntPtr callbackData, GetUserCallback callback)
-; Result GetCurrentUserPremiumTypeMethod(IntPtr methodsPtr, ref PremiumType premiumType)
-; Result CurrentUserHasFlagMethod(IntPtr methodsPtr, UserFlag flag, ref bool hasFlag)
 Global Const $__DISCORD_tagUSERMANAGERMETHODS = "struct;" & _
                                                 "ptr GetCurrentUser;" & _
                                                 "ptr GetUser;" & _
@@ -244,20 +235,12 @@ Global Const $__DISCORD_tagUSERMANAGERMETHODS = "struct;" & _
 Global Const $__DISCORD_tagIMAGEMANAGEREVENTS = "struct;" & _
                                                 "endstruct;"
 ; Image manager methods
-; void FetchCallback(IntPtr ptr, Result result, ImageHandle handleResult)
-; void FetchMethod(IntPtr methodsPtr, ImageHandle handle, bool refresh, IntPtr callbackData, FetchCallback callback)
-; Result GetDimensionsMethod(IntPtr methodsPtr, ImageHandle handle, ref ImageDimensions dimensions)
-; Result GetDataMethod(IntPtr methodsPtr, ImageHandle handle, byte[] data, Int32 dataLen)
 Global Const $__DISCORD_tagIMAGEMANAGERMETHODS = "struct;" & _
                                                  "ptr Fetch;" & _
                                                  "ptr GetDimensions;" & _
                                                  "ptr GetData;" & _
                                                  "endstruct;"
 ; Activity manager events
-; void ActivityJoinHandler(IntPtr ptr, [MarshalAs(UnmanagedType_LPStr)]string secret)
-; void ActivitySpectateHandler(IntPtr ptr, [MarshalAs(UnmanagedType_LPStr)]string secret)
-; void ActivityJoinRequestHandler(IntPtr ptr, ref User user)
-; void ActivityInviteHandler(IntPtr ptr, ActivityActionType type, ref User user, ref Activity activity)
 Global Const $__DISCORD_tagACTIVITYMANAGEREVENTS = "struct;" & _
                                                    "ptr OnActivityJoin;" & _
                                                    "ptr OnActivitySpectate;" & _
@@ -265,18 +248,6 @@ Global Const $__DISCORD_tagACTIVITYMANAGEREVENTS = "struct;" & _
                                                    "ptr OnActivityInvite;" & _
                                                    "endstruct;"
 ; Activity manager methods
-; Result RegisterCommandMethod(IntPtr methodsPtr, [MarshalAs(UnmanagedType_LPStr)]string command)
-; Result RegisterSteamMethod(IntPtr methodsPtr, UInt32 steamId)
-; void UpdateActivityCallback(IntPtr ptr, Result result)
-; void UpdateActivityMethod(IntPtr methodsPtr, ref Activity activity, IntPtr callbackData, UpdateActivityCallback callback)
-; void ClearActivityCallback(IntPtr ptr, Result result)
-; void ClearActivityMethod(IntPtr methodsPtr, IntPtr callbackData, ClearActivityCallback callback)
-; void SendRequestReplyCallback(IntPtr ptr, Result result)
-; void SendRequestReplyMethod(IntPtr methodsPtr, Int64 userId, ActivityJoinRequestReply reply, IntPtr callbackData, SendRequestReplyCallback callback)
-; void SendInviteCallback(IntPtr ptr, Result result)
-; void SendInviteMethod(IntPtr methodsPtr, Int64 userId, ActivityActionType type, [MarshalAs(UnmanagedType_LPStr)]string content, IntPtr callbackData, SendInviteCallback callback)
-; void AcceptInviteCallback(IntPtr ptr, Result result)
-; void AcceptInviteMethod(IntPtr methodsPtr, Int64 userId, IntPtr callbackData, AcceptInviteCallback callback)
 Global Const $__DISCORD_tagACTIVITYMANAGERMETHODS = "struct;" & _
                                                     "ptr RegisterCommand;" & _
                                                     "ptr RegisterSteam;" & _
