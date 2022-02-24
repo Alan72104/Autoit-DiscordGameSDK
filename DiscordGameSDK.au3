@@ -495,6 +495,10 @@ EndFunc
 Func __Discord_PutStructIntoArray($tStruct, $tagRef)
     StringReplace($tagRef, ";", ";", 0, $STR_NOCASESENSEBASIC)
     Local $iEleCount = @extended - 2
+    ; Bad hack
+    If StringInStr($tagRef, "align", $STR_NOCASESENSEBASIC) Then
+        $iEleCount -= 1
+    EndIf
     Local $aArray[$iEleCount]
     For $i = 1 To $iEleCount
         $aArray[$i - 1] = DllStructGetData($tStruct, $i)
@@ -505,6 +509,10 @@ EndFunc
 Func __Discord_PutArrayIntoStruct($aArray, $tagRef)
     StringReplace($tagRef, ";", ";", 0, $STR_NOCASESENSEBASIC)
     Local $iEleCount = @extended - 2
+    ; Bad hack
+    If StringInStr($tagRef, "align", $STR_NOCASESENSEBASIC) Then
+        $iEleCount -= 1
+    EndIf
     Local $tStruct = DllStructCreate($tagRef)
     For $i = 1 To $iEleCount
         DllStructSetData($tStruct, $i, $aArray[$i - 1])
@@ -1373,17 +1381,34 @@ Func _Discord_ImageManager_Fetch($aHandle, $bRefresh, $fnHandler)
         Return False
     EndIf
     If $__Discord_ImageManager_hFetchCallback = 0 Then
-        $__Discord_ImageManager_hFetchCallback = DllCallbackRegister("__Discord_ImageManager_FetchCallbackHandler", "none:cdecl", "ptr;int;ptr")
+        ; Callback: void FetchCallback(IntPtr ptr, Result result, ImageHandle handleResult)
+        ; On x86: struct (ImageHandle) {int,int64,uint} becomes {int64,int64,uint64}
+        ; On x64: it uses pointer
+        If @AutoItX64 Then
+            $__Discord_ImageManager_hFetchCallback = DllCallbackRegister("__Discord_ImageManager_FetchCallbackHandler64", "none:cdecl", "ptr;int;ptr")
+        Else
+            $__Discord_ImageManager_hFetchCallback = DllCallbackRegister("__Discord_ImageManager_FetchCallbackHandler32", "none:cdecl", "ptr;int;int64;int64;uint64")
+        EndIf
     EndIf
     $__Discord_ImageManager_fnFetchCallbackHandler = $fnHandler
     Local $tHandle = __Discord_PutArrayIntoStruct($aHandle, $__DISCORD_tagIMAGEHANDLE)
-    DllCallAddress("none:cdecl", _
-                   DllStructGetData($__Discord_atMethodInterfaces[$__DISCORD_IMAGEMANAGER], "Fetch"), _
-                   "ptr", $__Discord_apMethodPtrs[$__DISCORD_IMAGEMANAGER], _
-                   "ptr", DllStructGetPtr($tHandle), _
-                   "boolean", $bRefresh, _
-                   "ptr", Null, _
-                   "ptr", DllCallbackGetPtr($__Discord_ImageManager_hFetchCallback))
+    If @AutoItX64 Then
+        DllCallAddress("none:cdecl", _
+                       DllStructGetData($__Discord_atMethodInterfaces[$__DISCORD_IMAGEMANAGER], "Fetch"), _
+                       "ptr", $__Discord_apMethodPtrs[$__DISCORD_IMAGEMANAGER], _
+                       "struct*", DllStructGetPtr($tHandle), _
+                       "boolean", $bRefresh, _
+                       "ptr", Null, _
+                       "ptr", DllCallbackGetPtr($__Discord_ImageManager_hFetchCallback))
+    Else
+        DllCallAddress("none:cdecl", _
+                       DllStructGetData($__Discord_atMethodInterfaces[$__DISCORD_IMAGEMANAGER], "Fetch"), _
+                       "ptr", $__Discord_apMethodPtrs[$__DISCORD_IMAGEMANAGER], _
+                       "struct", $tHandle, _
+                       "boolean", $bRefresh, _
+                       "ptr", Null, _
+                       "ptr", DllCallbackGetPtr($__Discord_ImageManager_hFetchCallback))
+    EndIf
     Return True
 EndFunc
 
@@ -1393,11 +1418,19 @@ Func _Discord_ImageManager_GetDimensions($aHandle)
     EndIf
     Local $tHandle = __Discord_PutArrayIntoStruct($aHandle, $__DISCORD_tagIMAGEHANDLE)
     Local $tDimensions = DllStructCreate($__DISCORD_tagIMAGEDIMENSIONS)
-    Local $aResult = DllCallAddress("int:cdecl", _
-                                    DllStructGetData($__Discord_atMethodInterfaces[$__DISCORD_IMAGEMANAGER], "GetDimensions"), _
-                                    "ptr", $__Discord_apMethodPtrs[$__DISCORD_IMAGEMANAGER], _
-                                    "ptr", DllStructGetPtr($tHandle), _
-                                    "ptr", DllStructGetPtr($tDimensions))
+    If @AutoItX64 Then
+        Local $aResult = DllCallAddress("int:cdecl", _
+                                        DllStructGetData($__Discord_atMethodInterfaces[$__DISCORD_IMAGEMANAGER], "GetDimensions"), _
+                                        "ptr", $__Discord_apMethodPtrs[$__DISCORD_IMAGEMANAGER], _
+                                        "struct*", DllStructGetPtr($tHandle), _
+                                        "ptr", DllStructGetPtr($tDimensions))
+    Else
+        Local $aResult = DllCallAddress("int:cdecl", _
+                                        DllStructGetData($__Discord_atMethodInterfaces[$__DISCORD_IMAGEMANAGER], "GetDimensions"), _
+                                        "ptr", $__Discord_apMethodPtrs[$__DISCORD_IMAGEMANAGER], _
+                                        "struct", $tHandle, _
+                                        "ptr", DllStructGetPtr($tDimensions))
+    EndIf
     If $aResult[0] <> $DISCORD_RESULT_OK Then
         Return SetError($aResult[0], 0, False)
     EndIf
@@ -1410,15 +1443,27 @@ Func _Discord_ImageManager_GetData($aHandle)
         Return False
     EndIf
     Local $aDimensions = _Discord_ImageManager_GetDimensions($aHandle)
+    If $aDimensions = False Then
+        Return SetError(@error, 0, False)
+    EndIf
     Local $iLen = $aDimensions[0] * $aDimensions[1] * 4
     Local $tHandle = __Discord_PutArrayIntoStruct($aHandle, $__DISCORD_tagIMAGEHANDLE)
     Local $tData = DllStructCreate("byte[" & $iLen & "]")
-    Local $aResult = DllCallAddress("int:cdecl", _
-                                    DllStructGetData($__Discord_atMethodInterfaces[$__DISCORD_IMAGEMANAGER], "GetData"), _
-                                    "ptr", $__Discord_apMethodPtrs[$__DISCORD_IMAGEMANAGER], _
-                                    "ptr", DllStructGetPtr($tHandle), _
-                                    "ptr", DllStructGetPtr($tData), _
-                                    "int", $iLen)
+    If @AutoItX64 Then
+        Local $aResult = DllCallAddress("int:cdecl", _
+                                        DllStructGetData($__Discord_atMethodInterfaces[$__DISCORD_IMAGEMANAGER], "GetData"), _
+                                        "ptr", $__Discord_apMethodPtrs[$__DISCORD_IMAGEMANAGER], _
+                                        "struct*", DllStructGetPtr($tHandle), _
+                                        "ptr", DllStructGetPtr($tData), _
+                                        "int", $iLen)
+    Else
+        Local $aResult = DllCallAddress("int:cdecl", _
+                                        DllStructGetData($__Discord_atMethodInterfaces[$__DISCORD_IMAGEMANAGER], "GetData"), _
+                                        "ptr", $__Discord_apMethodPtrs[$__DISCORD_IMAGEMANAGER], _
+                                        "struct", $tHandle, _
+                                        "ptr", DllStructGetPtr($tData), _
+                                        "int", $iLen)
+    EndIf
     If $aResult[0] <> $DISCORD_RESULT_OK Then
         Return SetError($aResult[0], 0, False)
     EndIf
@@ -1439,11 +1484,19 @@ EndFunc
 Func __Discord_ImageManager_InitEvents()
 EndFunc
 
-Func __Discord_ImageManager_FetchCallbackHandler($pPtr, $iResult, $pHandleResult)
+Func __Discord_ImageManager_FetchCallbackHandler64($pPtr, $iResult, $pHandle)
     #forceref $pPtr
     If $__Discord_ImageManager_fnFetchCallbackHandler <> 0 Then
-        Local $tHandleResult = DllStructCreate($__DISCORD_tagIMAGEHANDLE, $pHandleResult)
+        Local $tHandleResult = DllStructCreate($__DISCORD_tagIMAGEHANDLE, $pHandle)
         Local $aHandleResult = __Discord_PutStructIntoArray($tHandleResult, $__DISCORD_tagIMAGEHANDLE)
+        $__Discord_ImageManager_fnFetchCallbackHandler($iResult, $aHandleResult)
+    EndIf
+EndFunc
+
+Func __Discord_ImageManager_FetchCallbackHandler32($pPtr, $iResult, $iHandle1, $iHandle2, $iHandle3)
+    #forceref $pPtr
+    If $__Discord_ImageManager_fnFetchCallbackHandler <> 0 Then
+        Local $aHandleResult = [$iHandle1, $iHandle2, $iHandle3]
         $__Discord_ImageManager_fnFetchCallbackHandler($iResult, $aHandleResult)
     EndIf
 EndFunc
@@ -1818,7 +1871,12 @@ Func _Discord_RelationshipManager_Filter($fnHandler)
         Return False
     EndIf
     If $__Discord_RelationshipManager_hFilterCallback = 0 Then
-        $__Discord_RelationshipManager_hFilterCallback = DllCallbackRegister("__Discord_RelationshipManager_FilterCallbackHandler", "boolean", "ptr;ptr")
+        If @AutoItX64 Then
+            $__Discord_RelationshipManager_hFilterCallback = DllCallbackRegister("__Discord_RelationshipManager_FilterCallbackHandler64", "boolean", "ptr;ptr")
+        Else
+            c("_Discord_RelationshipManager_Filter() on x86 is currently not implemented")
+            Return False
+        EndIf
     EndIf
     $__Discord_RelationshipManager_fnFilterCallbackHandler = $fnHandler
     DllCallAddress("none:cdecl", _
@@ -1868,7 +1926,7 @@ Func _Discord_RelationshipManager_GetAt($iIndex)
     Local $aRelationship = __Discord_PutStructIntoArray($tRelationship, $__DISCORD_tagRELATIONSHIP)
     Return $aRelationship
 EndFunc
-#region Relationship manager public functions
+#endregion Relationship manager public functions
 
 #region Relationship manager private functions
 Func __Discord_RelationshipManager_Init()
@@ -1907,11 +1965,20 @@ Func __Discord_RelationshipManager_OnRelationshipUpdateHandler($pPtr, $pRelation
 EndFunc
 
 ; Handler for: bool FilterCallback(IntPtr ptr, ref Relationship relationship)
-Func __Discord_RelationshipManager_FilterCallbackHandler($pPtr, $pRelationShip)
+Func __Discord_RelationshipManager_FilterCallbackHandler64($pPtr, $pRelationShip)
     #forceref $pPtr
     If $__Discord_RelationshipManager_fnFilterCallbackHandler <> 0 Then
         Local $tRelationship = DllStructCreate($__DISCORD_tagRELATIONSHIP, $pRelationship)
         Local $aRelationship = __Discord_PutStructIntoArray($tRelationship, $__DISCORD_tagRELATIONSHIP)
+        Return $__Discord_RelationshipManager_fnFilterCallbackHandler($aRelationship)
+    EndIf
+    Return True
+EndFunc
+
+Func __Discord_RelationshipManager_FilterCallbackHandler32($pPtr, $a, $b, $c, $d, $e, $f, $g, $h, $i, $j, $k, $l, $m, $n, $o, $p, $q, $r, $s, $t, $u, $v, $w, $x)
+    #forceref $pPtr
+    If $__Discord_RelationshipManager_fnFilterCallbackHandler <> 0 Then
+        Local $aRelationship = [$a, $b, $c, $d, $e, $f, $g, $h, $i, $j, $k, $l, $m, $n, $o, $p, $q, $r, $s, $t, $u, $v, $w, $x]
         Return $__Discord_RelationshipManager_fnFilterCallbackHandler($aRelationship)
     EndIf
     Return True

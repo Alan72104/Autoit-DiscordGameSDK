@@ -6,7 +6,6 @@
 
 Global Const $gui = False
 Global $hGui, $hPic
-Global $relationshipRefreshed = False, $relationshipFiltered = False
 HotKeySet("{F7}", "Terminate")
 
 ; !!This SDK is quite unstable so random crash might occur!!
@@ -17,7 +16,7 @@ HotKeySet("{F7}", "Terminate")
 ; https://discord.com/developers/docs/game-sdk/sdk-starter-guide
 ; Download the sdk, extract,
 ; rename the DLL in "discord_game_sdk\lib\x86_64" folder to "discord_game_sdk64.dll",
-; then copy both DLLs in "discord_game_sdk\lib" to your main script folder and get going
+; then copy both DLLs in "\x86" and "\x86_64" to your main script folder and get going
 
 Func Main()
     ; Init must be called once with a correct application id!
@@ -27,7 +26,7 @@ Func Main()
     
     If $gui Then
         ; Create the gui
-        $hGui = GUICreate("GameSDK test", 500, 500)
+        $hGui = GUICreate("DiscordGameSDK test", 500, 500)
         $hPic = GUICtrlCreatePic("", 0, 0, 100, 100, $SS_BITMAP)
         GUISetState(@SW_SHOW)
     EndIf
@@ -72,19 +71,6 @@ Func Main()
             ExitLoop
         EndIf
         
-        If $relationshipRefreshed And Not $relationshipFiltered Then
-            _Discord_RelationshipManager_Filter(FilterHandler)
-            $relationshipFiltered = True
-            ; Loop over all friends a user has
-            Local $count = _Discord_RelationshipManager_Count()
-            For $i = 0 To $count - 1
-                ; Get an individual relationship from the list
-                Local $r = _Discord_RelationshipManager_GetAt($i)
-                c("Relationships: $ $", 1, $r[0], $r[2])
-                ; Save r off to a list of user's relationships
-            Next
-        EndIf
-        
         If $gui Then
             Local $msg = GUIGetMsg()
             Switch $msg
@@ -101,29 +87,38 @@ Main()
 ; Filter a user's relationship list to be just friends
 ; Use this list as your base
 Func RefreshHandler()
-    $relationshipRefreshed = True
+    _Discord_RelationshipManager_Filter(FilterHandler)
+    ; Loop over all friends a user has
+    Local $count = _Discord_RelationshipManager_Count()
+    For $i = 0 To $count - 1
+        ; Get an individual relationship from the list
+        Local $r = _Discord_RelationshipManager_GetAt($i)
+        c("Relationships: $ $", 1, $r[0], $r[2])
+        ; Save r off to a list of user's relationships...
+    Next
 EndFunc
 
 Func FilterHandler($relationship)
-    ca($relationship)
-    ; Local $t = __Discord_PutArrayIntoStruct($relationship, $__DISCORD_tagRELATIONSHIP)
     Return $relationship[0] = $DISCORD_RELATIONSHIPTYPE_FRIEND
 EndFunc
 
-Func FetchCallbackHandler($result, $handle)
+Func FetchHandler($result, $handle)
     If $result <> $DISCORD_RESULT_OK Then
-        c("Fetch failed with $", 1, _Discord_GetResultString($result))
+        c("Avatar fetch failed with $", 1, _Discord_GetResultString($result))
     Else
-        c("Fetch succeeded")
+        c("Avatar fetch succeeded")
         If $gui Then
             Local $dataString = _Discord_ImageManager_GetData($handle)
+            If $dataString == False Then Return c("But failed to get avatar data: $", 1, _Discord_GetResultString(@error))
             Local $dims = _Discord_ImageManager_GetDimensions($handle)
+            If $dims == False Then Return c("But failed to get avatar dimensions: $", 1, _Discord_GetResultString(@error))
+            
             Local $data = DllStructCreate("byte[" & $dims[0] * $dims[1] * 4 & "]")
             DllStructSetData($data, 1, $dataString)
             _GDIPlus_Startup()
             Local $bitmap = _GDIPlus_BitmapCreateFromScan0($dims[0], $dims[1], $GDIP_PXF32ARGB, $dims[0] * 4, DllStructGetPtr($data))
             Local $hBitmap = _GDIPlus_BitmapCreateHBITMAPFromBitmap($bitmap)
-            GUICtrlSetPos($hPic, 500 - 150, 500 - 150, 300, 300)
+            GUICtrlSetPos($hPic, 500/2 - 150, 500/2 - 150, 300, 300)
             GUICtrlSendMsg($hPic, $STM_SETIMAGE, $IMAGE_BITMAP, $hBitmap)
             _WinAPI_DeleteObject($hBitmap)
             _GDIPlus_BitmapDispose($bitmap)
@@ -148,8 +143,11 @@ Func GetUserHandler($result, $user)
         If $gui Then
             ; Request users' avatar data
             ; This can only be done after a user is successfully fetched
-            Local $pfpHandle = _Discord_ImageManager_MakeHandle($DISCORD_IMAGETYPE_USER, 450285582585692161, 512)
-            _Discord_ImageManager_Fetch($pfpHandle, False, FetchCallbackHandler)
+            ; 
+            ; Currently this api only works with this one user, all else throws InternalError...
+            Local $pfpHandle = _Discord_ImageManager_MakeHandle($DISCORD_IMAGETYPE_USER, 555488988379611156, 512)
+            ; Local $pfpHandle = _Discord_ImageManager_MakeHandle($DISCORD_IMAGETYPE_USER, $user[0], 512)
+            _Discord_ImageManager_Fetch($pfpHandle, True, FetchHandler)
         EndIf
     EndIf
 EndFunc
@@ -161,7 +159,7 @@ EndFunc
 Func OnCurrentUserUpdateHandler()
     c("OnCurrentUserUpdateHandler fired")
     Local $user = _Discord_UserManager_GetCurrentUser()
-    If $user = False Then
+    If $user == False Then
         c("GetCurrentUser failed with $", 1, _Discord_GetResultString(@error))
     Else
         c("User updated\n  Id: $\n  Username: $\n  Discriminator: $\n  Avatar: $\n  Bot: $", 1, $user[0], $user[1], $user[2], $user[3], $user[4])
