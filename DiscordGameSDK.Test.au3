@@ -4,13 +4,16 @@
 #include "DiscordGameSDK.au3"
 #include "LibDebug.au3"
 
-Global Const $gui = False
+Global Const $gui = True
 Global $hGui, $hPic
 HotKeySet("{F7}", "Terminate")
 
 ; !!This SDK is quite unstable so random crash might occur!!
 ; !!Always refer to the official guide!!
-; Image fetching seems to have a unknown bug causing it to fail or crash
+
+; Issues:
+;     Image fetching currently has a known bug causing it to always fail
+;     _Discord_RelationshipManager_Filter() is not implemented on x86 bitness, thus the whole manager is unusable on x86
 
 ; First do the Step 1 and Get Set Up in the official guide
 ; https://discord.com/developers/docs/game-sdk/sdk-starter-guide
@@ -44,7 +47,7 @@ Func Main()
     c("Branch: $", 1, $locale)
     
     ; Get whatever user you want
-    _Discord_UserManager_GetUser(450285582585692161, GetUserHandler)
+    _Discord_UserManager_GetUser(159985870458322944, GetUserHandler)
     
     ; Set up the rich presence activity
     Local $now = _Date_Time_GetSystemTime()
@@ -64,7 +67,7 @@ Func Main()
     
     Local $t = TimerInit()
     While TimerDiff($t) < 10000 * 1000
-        ; You must keep runing all pending events in loop
+        ; You must keep runing all pending events in a loop
         Local $res = _Discord_RunCallbacks()
         If $res <> $DISCORD_RESULT_OK Then
             c("RunCallbacks failed with $", 1, _Discord_GetResultString($res))
@@ -84,15 +87,19 @@ EndFunc
 
 Main()
 
-; Filter a user's relationship list to be just friends
-; Use this list as your base
+; ==================================================
+
 Func RefreshHandler()
+    ; Filter a user's relationship list to be just friends
+    ; Use this list as your base
     _Discord_RelationshipManager_Filter(FilterHandler)
+    
     ; Loop over all friends a user has
     Local $count = _Discord_RelationshipManager_Count()
     For $i = 0 To $count - 1
         ; Get an individual relationship from the list
         Local $r = _Discord_RelationshipManager_GetAt($i)
+        
         c("Relationships: $ $", 1, $r[0], $r[2])
         ; Save r off to a list of user's relationships...
     Next
@@ -102,12 +109,33 @@ Func FilterHandler($relationship)
     Return $relationship[0] = $DISCORD_RELATIONSHIPTYPE_FRIEND
 EndFunc
 
+; ==================================================
+
+Func GetUserHandler($result, $user)
+    If $result <> $DISCORD_RESULT_OK Then
+        c("GetUser failed with $", 1, _Discord_GetResultString($result))
+    Else
+        c("Got user\n  Id: $\n  Username: $\n  Discriminator: $\n  Avatar: $\n  Bot: $", 1, $user[0], $user[1], $user[2], $user[3], $user[4])
+        If $gui Then
+            ; Request users' avatar data
+            ; This can only be done after a user is successfully fetched
+            ; 
+            ; Currently this api only works with this one user, all else throws InternalError...
+            Local $pfpHandle = _Discord_ImageManager_MakeHandle($DISCORD_IMAGETYPE_USER, 555488988379611156, 512)
+            ; Local $pfpHandle = _Discord_ImageManager_MakeHandle($DISCORD_IMAGETYPE_USER, $user[0], 512)
+            
+            _Discord_ImageManager_Fetch($pfpHandle, True, FetchHandler)
+        EndIf
+    EndIf
+EndFunc
+
 Func FetchHandler($result, $handle)
     If $result <> $DISCORD_RESULT_OK Then
         c("Avatar fetch failed with $", 1, _Discord_GetResultString($result))
     Else
         c("Avatar fetch succeeded")
         If $gui Then
+            ; Get the data and display on the gui
             Local $dataString = _Discord_ImageManager_GetData($handle)
             If $dataString == False Then Return c("But failed to get avatar data: $", 1, _Discord_GetResultString(@error))
             Local $dims = _Discord_ImageManager_GetDimensions($handle)
@@ -127,28 +155,13 @@ Func FetchHandler($result, $handle)
     EndIf
 EndFunc
 
+; ==================================================
+
 Func UpdateActivityHandler($result)
     If $result <> $DISCORD_RESULT_OK Then
         c("UpdateActivity failed with $", 1, _Discord_GetResultString($result))
     Else
         c("UpdateActivity succeeded")
-    EndIf
-EndFunc
-
-Func GetUserHandler($result, $user)
-    If $result <> $DISCORD_RESULT_OK Then
-        c("GetUser failed with $", 1, _Discord_GetResultString($result))
-    Else
-        c("Got user\n  Id: $\n  Username: $\n  Discriminator: $\n  Avatar: $\n  Bot: $", 1, $user[0], $user[1], $user[2], $user[3], $user[4])
-        If $gui Then
-            ; Request users' avatar data
-            ; This can only be done after a user is successfully fetched
-            ; 
-            ; Currently this api only works with this one user, all else throws InternalError...
-            Local $pfpHandle = _Discord_ImageManager_MakeHandle($DISCORD_IMAGETYPE_USER, 555488988379611156, 512)
-            ; Local $pfpHandle = _Discord_ImageManager_MakeHandle($DISCORD_IMAGETYPE_USER, $user[0], 512)
-            _Discord_ImageManager_Fetch($pfpHandle, True, FetchHandler)
-        EndIf
     EndIf
 EndFunc
 
@@ -165,6 +178,8 @@ Func OnCurrentUserUpdateHandler()
         c("User updated\n  Id: $\n  Username: $\n  Discriminator: $\n  Avatar: $\n  Bot: $", 1, $user[0], $user[1], $user[2], $user[3], $user[4])
     EndIf
 EndFunc
+
+; ==================================================
 
 Func Terminate()
     If $gui Then
